@@ -1,0 +1,28 @@
+{
+  "name": "muraqib",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ayaalmadhon2004/Muraqib.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ayaalmadhon2004/Muraqib/issues"
+  },
+  "homepage": "https://github.com/Ayaalmadhon2004/Muraqib#readme",
+  "devDependencies": {
+    "@standard-schema/spec": "^1.1.0",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}
