@@ -1,14 +1,17 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { BaseOptions, Simplify } from "./types.js";
+import type { BaseOptions, StrictOptions, Simplify } from "./types.js";
 
 export function createGuard<T extends Record<string, any>>(
   schema: T,
-  opts: BaseOptions & { runtimeEnv: Record<string, any> }
+  opts: BaseOptions & (
+    | { runtimeEnv: Record<string, any>; runtimeEnvStrict?: never } 
+    | { runtimeEnvStrict: Record<string, any>; runtimeEnv?: never } 
+  )
 ) {
-  const runtimeEnv = { ...opts.runtimeEnv };
+  const runtimeEnv = { ...(opts.runtimeEnv || (opts as any).runtimeEnvStrict) };
   if (opts.emptyStringAsUndefined) {
     for (const key in runtimeEnv) {
-      if (runtimeEnv[key] === "") delete runtimeEnv[key];
+      if (runtimeEnv[key] === "") delete runtimeEnv[key]; 
     }
   }
 
