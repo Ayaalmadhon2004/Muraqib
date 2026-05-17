@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createGuard } from "./core/standard.js";
 
 // ==========================================
-// 1. تعريف الـ Presets الجاهزة (خلطات المنصات السحابية)
+// 1. تعريف الـ Presets الجاهزة (خلطات المنصات السحابية الثابتة)
 // ==========================================
 const vercelPreset = {
   VERCEL: z.string().optional(),
@@ -15,7 +15,7 @@ const supabasePreset = {
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY is required"),
 };
 
-// كائن يجمع كل الخلطات المتاحة في مكتبة مراقب
+// كائن السجل المعتمد للخلطات الجاهزة داخل مكتبة مراقب
 const presetsMap = {
   vercel: vercelPreset,
   supabase: supabasePreset,
@@ -23,31 +23,41 @@ const presetsMap = {
 
 type PresetName = keyof typeof presetsMap;
 
+// تعريف نوع المدخلات: إما اسم بريسيت جاهز كنص، أو كائن مخطط مخصص (Custom Schema)
+type PresetInput = PresetName | Record<string, z.ZodTypeAny>;
+
 // ==========================================
-// 2. دالة مغلفة ذكية لدمج الـ Presets تلقائياً
+// 2. دالة مغلفة ذكية تدعم الـ Presets والـ Custom Schemas معاً
 // ==========================================
-function createEnvWithPresets<T extends Record<string, any>>(
+function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
   userSchema: T,
   options: {
     runtimeEnv: Record<string, any>;
     isServer?: boolean;
     emptyStringAsUndefined?: boolean;
-    presets?: PresetName[];
+    presets?: PresetInput[]; // المصفوفة أصبحت تقبل النصوص والكائنات
   }
 ) {
-  let combinedSchema: Record<string, any> = { ...userSchema };
+  // نبدأ بنسخ المخطط الأساسي الذي كتبه المطور يدوياً
+  let combinedSchema: Record<string, z.ZodTypeAny> = { ...userSchema };
 
-  // إذا طلب المطور تفعيل خلطات جاهزة، ندمجها في الـ Schema الكبيرة تلقائياً
+  // الـ Loop الذكي للدمج والتركيب الفوري
   if (options.presets) {
-    for (const presetName of options.presets) {
-      const presetSchema = presetsMap[presetName];
-      if (presetSchema) {
-        combinedSchema = { ...combinedSchema, ...presetSchema };
+    for (const preset of options.presets) {
+      if (typeof preset === "string") {
+        // أ) إذا كان المدخل نصاً، نسحب الخلطة الجاهزة من السجل
+        const presetSchema = presetsMap[preset];
+        if (presetSchema) {
+          combinedSchema = { ...combinedSchema, ...presetSchema };
+        }
+      } else if (preset && typeof preset === "object") {
+        // ب) السحر هان: إذا كان المدخل كائناً (Custom Schema)، ندمجه مباشرة في المخطط النهائي!
+        combinedSchema = { ...combinedSchema, ...preset };
       }
     }
   }
 
-  // تمرير الـ Schema النهائية المدمجة لدالة الحماية الأساسية بمكتبتك
+  // تمرير الـ Schema النهائية الشاملة والمدمجة لدالة الحماية الأساسية بمكتبتك
   return createGuard(combinedSchema, {
     runtimeEnv: options.runtimeEnv,
     isServer: options.isServer ?? typeof window === "undefined",
@@ -56,21 +66,31 @@ function createEnvWithPresets<T extends Record<string, any>>(
 }
 
 // ==========================================
-// 3. الاستخدام الفعلي والنهائي داخل المشروع (الـ Export)
+// 3. محاكاة للاستخدام الفعلي والتطبيق العملي (الـ Export)
 // ==========================================
+
+// لنفرض أن المطور يريد فحص Firebase وهو غير مدعوم تلقائياً بمكتبتك، سيبني الـ Custom Schema الخاصة به هنا:
+const firebaseCustomSchema = {
+  FIREBASE_API_KEY: z.string().min(1, "Firebase API Key is required"),
+  FIREBASE_PROJECT_ID: z.string(),
+};
+
 export const env = createEnvWithPresets(
-  // أ) المتغيرات الخاصة ببرمجتك أنتِ يدوياً
+  // أ) المتغيرات الخاصة ببرمجته هو يدوياً للمشروع
   {
     DATABASE_URL: z.string().url(),
     NEXT_PUBLIC_SITE_NAME: z.string(),
   },
-  // ب) الخيارات والـ Presets المطلوبة للسيستم
+  // ب) الخيارات والـ Presets الهجينة المطلوبة للسيستم بالكامل
   {
     runtimeEnv: process.env, 
     isServer: typeof window === "undefined",
     emptyStringAsUndefined: true,
     
-    // بمجرد كتابة الأسماء هان، الكود فوق حيسحب شروط فحصهم ويفحصهم فوراً!
-    presets: ["vercel", "supabase"], 
+    presets: [
+      "vercel",              // خلطة جاهزة مبنية داخل مكتبة مراقب
+      "supabase",            // خلطة جاهزة أخرى مبنية داخل مكتبة مراقب
+      firebaseCustomSchema,  // 💥 تمرير مخطط مخصص (Custom Schema) لخدمة خارجية تماماً!
+    ], 
   }
 );
