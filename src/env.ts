@@ -1,96 +1,159 @@
+// src/env.ts
 import { z } from "zod";
-import { createGuard } from "./core/standard.js";
+import { presetsMap } from "./presets.js";
+import type { PresetInput } from "./presets.js";
+import { createGuard } from "./guard/core/standard.js";
+import type { GuardSchema } from "./guard/core/types.js";
 
-// ==========================================
-// 1. تعريف الـ Presets الجاهزة (خلطات المنصات السحابية الثابتة)
-// ==========================================
-const vercelPreset = {
-  VERCEL: z.string().optional(),
-  VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
-  VERCEL_URL: z.string().optional(),
+// ===================================================
+// 🧬 TypeScript Strict Inference (مطابق للصورة بالملي)
+// ===================================================
+
+// استنتاج نوع المخرجات تلقائياً من أي مكتبة فحص (Standard Schema Inference)
+type InferSchema<T extends GuardSchema> = {
+  [K in keyof T]: T[K] extends { _output: infer O }
+    ? O
+    : T[K] extends { infer: () => infer O }
+    ? O
+    : T[K] extends { ["~standard"]: { types: { output: infer O } } }
+    ? O
+    : any;
 };
 
-const supabasePreset = {
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url("NEXT_PUBLIC_SUPABASE_URL must be a valid URL"),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY is required"),
-};
+// نوع ذكي لدمج المصفوفات الممتدة (extends) واستخراج أنواعها
+type IntersectExtension<T extends any[]> = T extends [infer Head, ...infer Tail]
+  ? (Head extends Record<string, any> ? Head : {}) & IntersectExtension<Tail>
+  : {};
 
-// كائن السجل المعتمد للخلطات الجاهزة داخل مكتبة مراقب
-const presetsMap = {
-  vercel: vercelPreset,
-  supabase: supabasePreset,
-} as const;
+// واجهة خيارات createEnv الصارمة التي تجبر الـ Client على مطابقة الـ Prefix
+interface CreateEnvOptions<
+  TPrefix extends string = "",
+  TServer extends GuardSchema = Record<string, never>,
+  TClient extends GuardSchema = Record<string, never>,
+  TExtends extends any[] = []
+> {
+  clientPrefix?: TPrefix;
+  
+  // فحص صارم: إذا بدأ مفتاح السيرفر بالـ Prefix يمنعه الـ Compiler فوراً
+  server?: {
+    [K in keyof TServer]: K extends `${TPrefix}${string}`
+      ? never
+      : TServer[K];
+  };
 
-type PresetName = keyof typeof presetsMap;
+  // فحص صارم: يجب أن تبدأ جميع مفاتيح الكلاينت بالـ Prefix وإلا تصبح never ويضرب الـ Compiler
+  client?: {
+    [K in keyof TClient]: K extends `${TPrefix}${string}`
+      ? TClient[K]
+      : never;
+  };
 
-// تعريف نوع المدخلات: إما اسم بريسيت جاهز كنص، أو كائن مخطط مخصص (Custom Schema)
-type PresetInput = PresetName | Record<string, z.ZodTypeAny>;
+  presets?: PresetInput[];
+  runtimeEnv?: Record<string, any>;
+  runtimeEnvStrict?: Record<string, any>;
+  isServer?: boolean;
+  emptyStringAsUndefined?: boolean;
+  extends?: [...TExtends];
+}
 
-// ==========================================
-// 2. دالة مغلفة ذكية تدعم الـ Presets والـ Custom Schemas معاً
-// ==========================================
-function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
-  userSchema: T,
-  options: {
-    runtimeEnv: Record<string, any>;
-    isServer?: boolean;
-    emptyStringAsUndefined?: boolean;
-    presets?: PresetInput[]; // المصفوفة أصبحت تقبل النصوص والكائنات
+// ===================================================
+// 🚀 الدالة المركزية المطورة بالأنواع الصارمة
+// ===================================================
+export function createEnv<
+  TPrefix extends string = "",
+  TServer extends GuardSchema = Record<string, never>,
+  TClient extends GuardSchema = Record<string, never>,
+  TExtends extends any[] = []
+>(
+  opts: CreateEnvOptions<TPrefix, TServer, TClient, TExtends>
+): Readonly<InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends>> {
+  
+  const clientPrefix = opts.clientPrefix ?? "";
+
+  // 1️⃣ حارس الـ Runtime (لو حاول المطور تخطي التايب سكريبت بـ as any)
+  if (clientPrefix && opts.server) {
+    for (const key in opts.server) {
+      if (key.startsWith(clientPrefix)) {
+        throw new Error(`🚨 Muraqib Architectural Violation: Server variable "${key}" should not be prefixed with "${clientPrefix}".`);
+      }
+    }
   }
-) {
-  // نبدأ بنسخ المخطط الأساسي الذي كتبه المطور يدوياً
-  let combinedSchema: Record<string, z.ZodTypeAny> = { ...userSchema };
 
-  // الـ Loop الذكي للدمج والتركيب الفوري
-  if (options.presets) {
-    for (const preset of options.presets) {
+  if (clientPrefix && opts.client) {
+    for (const key in opts.client) {
+      if (!key.startsWith(clientPrefix)) {
+        throw new Error(`🚨 Muraqib Architectural Violation: Client variable "${key}" must be prefixed with "${clientPrefix}".`);
+      }
+    }
+  }
+
+  // 2️⃣ تجميع الـ Schemas (Server + Client)
+  let combinedSchema: GuardSchema = {
+    ...opts.server,
+    ...opts.client,
+  };
+
+  // 3️⃣ دمج الـ Presets
+  if (opts.presets) {
+    for (const preset of opts.presets) {
       if (typeof preset === "string") {
-        // أ) إذا كان المدخل نصاً، نسحب الخلطة الجاهزة من السجل
         const presetSchema = presetsMap[preset];
         if (presetSchema) {
           combinedSchema = { ...combinedSchema, ...presetSchema };
         }
       } else if (preset && typeof preset === "object") {
-        // ب) السحر هان: إذا كان المدخل كائناً (Custom Schema)، ندمجه مباشرة في المخطط النهائي!
         combinedSchema = { ...combinedSchema, ...preset };
       }
     }
   }
 
-  // تمرير الـ Schema النهائية الشاملة والمدمجة لدالة الحماية الأساسية بمكتبتك
+  // 4️⃣ تجميع البيئة وتطبيق الـ Extends
+  const rawEnv = opts.runtimeEnvStrict ?? opts.runtimeEnv ?? process.env;
+  const processedEnv: Record<string, any> = { ...rawEnv };
+
+  if (opts.extends && Array.isArray(opts.extends)) {
+    for (const extendedEnv of opts.extends) {
+      if (extendedEnv && typeof extendedEnv === "object") {
+        Object.assign(processedEnv, extendedEnv);
+      }
+    }
+  }
+
+  // 5️⃣ التطهير (Sanitization)
+  const shouldSanitize = opts.emptyStringAsUndefined ?? true;
+  if (shouldSanitize) {
+    for (const key in processedEnv) {
+      if (processedEnv[key] === "") {
+        processedEnv[key] = undefined;
+      }
+    }
+  }
+
+  // 6️⃣ إرجاع الـ Proxy Shield المحمي
   return createGuard(combinedSchema, {
-    runtimeEnv: options.runtimeEnv,
-    isServer: options.isServer ?? typeof window === "undefined",
-    emptyStringAsUndefined: options.emptyStringAsUndefined ?? true,
-  });
+    runtimeEnv: processedEnv,
+    isServer: opts.isServer ?? typeof window === "undefined",
+    emptyStringAsUndefined: shouldSanitize,
+  }) as any;
 }
 
-// ==========================================
-// 3. محاكاة للاستخدام الفعلي والتطبيق العملي (الـ Export)
-// ==========================================
-
-// لنفرض أن المطور يريد فحص Firebase وهو غير مدعوم تلقائياً بمكتبتك، سيبني الـ Custom Schema الخاصة به هنا:
-const firebaseCustomSchema = {
-  FIREBASE_API_KEY: z.string().min(1, "Firebase API Key is required"),
-  FIREBASE_PROJECT_ID: z.string(),
-};
-
-export const env = createEnvWithPresets(
-  // أ) المتغيرات الخاصة ببرمجته هو يدوياً للمشروع
-  {
-    DATABASE_URL: z.string().url(),
-    NEXT_PUBLIC_SITE_NAME: z.string(),
-  },
-  // ب) الخيارات والـ Presets الهجينة المطلوبة للسيستم بالكامل
-  {
-    runtimeEnv: process.env, 
-    isServer: typeof window === "undefined",
-    emptyStringAsUndefined: true,
-    
-    presets: [
-      "vercel",              // خلطة جاهزة مبنية داخل مكتبة مراقب
-      "supabase",            // خلطة جاهزة أخرى مبنية داخل مكتبة مراقب
-      firebaseCustomSchema,  // 💥 تمرير مخطط مخصص (Custom Schema) لخدمة خارجية تماماً!
-    ], 
+// ===================================================
+// 🔄 Backward Compatibility: createEnvWithPresets
+// ===================================================
+export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
+  userSchema: T,
+  options: {
+    runtimeEnv: Record<string, any>;
+    isServer?: boolean;
+    emptyStringAsUndefined?: boolean;
+    presets?: PresetInput[]; 
   }
-);
+): Readonly<InferSchema<T>> {
+  return createEnv({
+    server: userSchema,
+    presets: options.presets,
+    runtimeEnv: options.runtimeEnv,
+    isServer: options.isServer,
+    emptyStringAsUndefined: options.emptyStringAsUndefined,
+  }) as any;
+}

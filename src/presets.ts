@@ -1,26 +1,40 @@
-import { string, pipe, url, optional, picklist, type GenericSchema } from "valibot";
+export interface VercelEnv {
+  VERCEL?: string;
+  CI?: string;
+  VERCEL_ENV?: "development" | "preview" | "production";
+  VERCEL_TARGET_ENV?: "development" | "preview" | "production" | (string & {});
+  VERCEL_URL?: string;
+  VERCEL_PROJECT_PRODUCTION_URL?: string;
+  VERCEL_BRANCH_URL?: string;
+  VERCEL_REGION?: string;
+  VERCEL_DEPLOYMENT_ID?: string;
+}
 
-// 1. خلطة فيرسل الجاهزة
-export const vercelPreset = {
-  VERCEL: optional(string()),
-  VERCEL_ENV: optional(picklist(["production", "preview", "development"])),
-  VERCEL_URL: optional(string()),
+export interface NeonVercelEnv extends VercelEnv {
+  DATABASE_URL: string;
+  DATABASE_URL_UNPOOLED?: string;
+  PGHOST?: string;
+  PGHOST_UNPOOLED?: string;
+}
+
+export interface SupabaseVercelEnv extends VercelEnv {
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+}
+
+export interface RailwayEnv {
+  RAILWAY_ENVIRONMENT_NAME?: string;
+  RAILWAY_ENVIRONMENT_ID?: string;
+  RAILWAY_PROJECT_NAME?: string;
+  RAILWAY_PROJECT_ID?: string;
+}
+
+export type PresetInput = "vercel" | "neonVercel" | "supabaseVercel" | "railway";
+
+export const presetsMap: Record<PresetInput, Record<string, any>> = {
+  vercel: {},
+  neonVercel: {},
+  supabaseVercel: {},
+  railway: {}
 };
-
-// 2. خلطة سوبابيز الجاهزة
-export const supabasePreset = {
-  NEXT_PUBLIC_SUPABASE_URL: pipe(string(), url("NEXT_PUBLIC_SUPABASE_URL must be a valid URL")),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: string("NEXT_PUBLIC_SUPABASE_ANON_KEY is required"),
-};
-
-// كائن السجل لجمع الخلطات الجاهزة
-export const presetsMap = {
-  vercel: vercelPreset,
-  supabase: supabasePreset,
-} as const;
-
-// تعريف الأنواع المدعومة نصياً
-export type BuiltInPresetName = keyof typeof presetsMap;
-
-// السحر هان: المطور يقدر يمرر إما اسم ميزة جاهزة أو كائن فحص كامل (Custom Schema)
-export type PresetInput = BuiltInPresetName | Record<string, GenericSchema>;

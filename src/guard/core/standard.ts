@@ -1,4 +1,3 @@
-import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { BaseOptions, StrictOptions, Simplify } from "./types.js";
 
 export function createGuard<T extends Record<string, any>>(
@@ -33,7 +32,7 @@ export function createGuard<T extends Record<string, any>>(
     return (opts.onValidationError || defaultError)(parsed.issues);
   }
 
-  return new Proxy(parsed.value, {
+  return new Proxy(parsed.value, { 
     get(target, prop: string) {
       const isClient = !opts.isServer;
       const isSecret = !prop.startsWith("NEXT_PUBLIC_");
