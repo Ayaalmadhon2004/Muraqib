@@ -73,3 +73,17 @@ if (isMainModule || process.argv[1]?.endsWith('index.ts')) {
     }
   }
 }
+
+import { createEnv } from "./env.js";
+import { cachePerformanceSchema } from "./rules/cache-guard.js";
+
+// محاكاة اختبار بيئة Staging بقيم تالفة وضعيفة للأداء
+const config = createEnv({
+  server: {
+    ...cachePerformanceSchema // حقن قواعد أداء الكاش
+  },
+  runtimeEnv: {
+    STATIC_ASSETS_CACHE_MAX_AGE: "600", // ❌ قيمة ضعيفة جداً (10 دقائق فقط)! الحارس سيرفض بناء المشروع فوراً
+    ENABLE_SERVER_COMPRESSION: "false"  // ❌ معطل! سيعطي تنبيهاً صارماً في الـ Terminal
+  }
+});
