@@ -1,4 +1,4 @@
-import { AbstractMuraqibMigration } from './abstract-migration.ts';
+import { AbstractMuraqibMigration } from './abstract-migration.js';
 
 export class RemovePropertyMigration extends AbstractMuraqibMigration {
   override readonly propertyName: string; 

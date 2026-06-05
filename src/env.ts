@@ -2,15 +2,15 @@
 import { z } from "zod";
 import { presetsMap } from "./presets.js";
 import type { PresetInput } from "./presets.js";
-import { createGuard } from "./guard/core/standard.js";
-import type { GuardSchema } from "./guard/core/types.js";
+import { createGuard } from "./core/standard.js";
+import type { GuardSchema } from "./core/types.js";
+import { isWithinSchedule } from "./utils/schedule-validator.js";
 
-// ===================================================
-// 🧬 TypeScript Strict Inference (مطابق للصورة بالملي)
-// ===================================================
+// =========================================================================
+// 1. الأنواع البرمجية العميقة واستنتاج مخرجات الأنواع (Advanced TypeScript Meta-programming)
+// =========================================================================
 
-// استنتاج نوع المخرجات تلقائياً من أي مكتبة فحص (Standard Schema Inference)
-type InferSchema<T extends GuardSchema> = {
+export type InferSchema<T extends GuardSchema> = {
   [K in keyof T]: T[K] extends { _output: infer O }
     ? O
     : T[K] extends { infer: () => infer O }
@@ -20,45 +20,80 @@ type InferSchema<T extends GuardSchema> = {
     : any;
 };
 
-// نوع ذكي لدمج المصفوفات الممتدة (extends) واستخراج أنواعها
-type IntersectExtension<T extends any[]> = T extends [infer Head, ...infer Tail]
+export type IntersectExtension<T extends any[]> = T extends [infer Head, ...infer Tail]
   ? (Head extends Record<string, any> ? Head : {}) & IntersectExtension<Tail>
   : {};
 
-// واجهة خيارات createEnv الصارمة التي تجبر الـ Client على مطابقة الـ Prefix
-interface CreateEnvOptions<
+export type ErrorMessage<T extends string> = T & { __brand: "ErrorMessage" };
+
+// =========================================================================
+// 2. واجهات إعدادات المحرك المركزي (Infrastructure Strict Interfaces)
+// =========================================================================
+
+export interface CreateEnvOptions<
   TPrefix extends string = "",
   TServer extends GuardSchema = Record<string, never>,
   TClient extends GuardSchema = Record<string, never>,
   TExtends extends any[] = []
 > {
+  /**
+   * الرمز البادئ لمتغيرات العميل المسموح بتسريبها للمتصفح (مثل VITE_ أو NEXT_PUBLIC_)
+   */
   clientPrefix?: TPrefix;
-  
-  // فحص صارم: إذا بدأ مفتاح السيرفر بالـ Prefix يمنعه الـ Compiler فوراً
+
+  /**
+   * مخطط حراسة وفحص السيرفر (Server-side schema validation rules)
+   */
   server?: {
     [K in keyof TServer]: K extends `${TPrefix}${string}`
-      ? never
+      ? ErrorMessage<`❌ خطأ مالي: المتغير "${K & string}" يحمل البادئة المخصصة للعميل، يرجى نقله إلى كائن الـ client.`>
       : TServer[K];
   };
 
-  // فحص صارم: يجب أن تبدأ جميع مفاتيح الكلاينت بالـ Prefix وإلا تصبح never ويضرب الـ Compiler
+  /**
+   * مخطط حراسة وفحص العميل (Client-side schema validation rules)
+   */
   client?: {
     [K in keyof TClient]: K extends `${TPrefix}${string}`
       ? TClient[K]
-      : never;
+      : ErrorMessage<`❌ خطأ أمني: المتغير "${K & string}" لا يحمل البادئة الآمنة "${TPrefix}"، يرجى نقله للسيرفر.`>;
   };
 
-  presets?: PresetInput[];
-  runtimeEnv?: Record<string, any>;
-  runtimeEnvStrict?: Record<string, any>;
-  isServer?: boolean;
+  /**
+   * كائن المتغيرات الصارم (يُجبر الأداة على القراءة منه حصراً وعدم اللجوء لـ process.env)
+   */
+  runtimeEnvStrict?: Record<string, unknown>;
+
+  /**
+   * كائن المتغيرات المرن الافتراضي لقراءة المتغيرات المخزنة بالذاكرة
+   */
+  runtimeEnv?: Record<string, string | undefined>;
+
+  /**
+   * امتدادات ووراثة برمجية خارجية من بيئات أخرى مكملة للنظام
+   */
+  extends?: TExtends;
+
+  /**
+   * تحويل النصوص الفارغة "" تلقائياً لقيم غير معرفة undefined لتفعيل أمان الـ Validators
+   */
   emptyStringAsUndefined?: boolean;
-  extends?: [...TExtends];
+
+  /**
+   * محاكاة الفحص بداخل بيئة السيرفر أو المتصفح بشكل يدوي وقسري
+   */
+  isServer?: boolean;
+
+  /**
+   * ⏳ حارس الجدولة الزمنية لتحديد أوقات التشغيل المسموح بها للأداة (Cron Syntax)
+   */
+  schedule?: string;
 }
 
-// ===================================================
-// 🚀 الدالة المركزية المطورة بالأنواع الصارمة
-// ===================================================
+// =========================================================================
+// 3. المحرك المعماري الأساسي لبناء وتدقيق بيئة العمل (Core Environment Engine)
+// =========================================================================
+
 export function createEnv<
   TPrefix extends string = "",
   TServer extends GuardSchema = Record<string, never>,
@@ -66,80 +101,76 @@ export function createEnv<
   TExtends extends any[] = []
 >(
   opts: CreateEnvOptions<TPrefix, TServer, TClient, TExtends>
-): Readonly<InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends>> {
+): InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends> | null {
   
-  const clientPrefix = opts.clientPrefix ?? "";
-
-  // 1️⃣ حارس الـ Runtime (لو حاول المطور تخطي التايب سكريبت بـ as any)
-  if (clientPrefix && opts.server) {
-    for (const key in opts.server) {
-      if (key.startsWith(clientPrefix)) {
-        throw new Error(`🚨 Muraqib Architectural Violation: Server variable "${key}" should not be prefixed with "${clientPrefix}".`);
-      }
+  // 🛡️ صمام الأمان والتحكم بالموارد: فحص الجدولة الزمنية (Schedule Validation Boundary)
+  if (opts.schedule) {
+    const allowedToRun = isWithinSchedule(opts.schedule);
+    if (!allowedToRun) {
+      console.warn(`⏳ [Muraqib Scheduler]: Process halted automatically. Current time is outside the allowed cron schedule window: "${opts.schedule}"`);
+      return null; // يدخل المحرك في طور السبات (Hibernate) ويخرج تماماً دون استهلاك طاقة الجهاز
     }
   }
 
-  if (clientPrefix && opts.client) {
-    for (const key in opts.client) {
-      if (!key.startsWith(clientPrefix)) {
-        throw new Error(`🚨 Muraqib Architectural Violation: Client variable "${key}" must be prefixed with "${clientPrefix}".`);
-      }
-    }
-  }
-
-  // 2️⃣ تجميع الـ Schemas (Server + Client)
-  let combinedSchema: GuardSchema = {
+  // تجميع مخططات الفحص المشتركة (Server + Client) في كائن واحد مفرود
+  let rawSchemaFields: Record<string, any> = {
     ...opts.server,
     ...opts.client,
   };
 
-  // 3️⃣ دمج الـ Presets
-  if (opts.presets) {
-    for (const preset of opts.presets) {
-      if (typeof preset === "string") {
-        const presetSchema = presetsMap[preset];
-        if (presetSchema) {
-          combinedSchema = { ...combinedSchema, ...presetSchema };
-        }
-      } else if (preset && typeof preset === "object") {
-        combinedSchema = { ...combinedSchema, ...preset };
-      }
-    }
-  }
+  // 🎯 الإصلاح الجذري: تحويل الـ Record المجمع إلى Zod Object رسمي ومتكامل
+  // هذا يمنع حدوث خطأ السقوط البرمجي (Cannot read properties of undefined (reading 'validate')) داخل الـ core الخاص بكِ
+  const combinedSchema = z.object(rawSchemaFields);
 
-  // 4️⃣ تجميع البيئة وتطبيق الـ Extends
+  // تحديد كائن القراءة الفعلي للمتغيرات بناءً على الصرامة المعمارية المحددة
   const rawEnv = opts.runtimeEnvStrict ?? opts.runtimeEnv ?? process.env;
   const processedEnv: Record<string, any> = { ...rawEnv };
 
+  // معالجة الامتدادات والوراثة الخارجية (Extends Execution Loop)
   if (opts.extends && Array.isArray(opts.extends)) {
     for (const extendedEnv of opts.extends) {
       if (extendedEnv && typeof extendedEnv === "object") {
+        // حماية الأنواع: نقوم بنسخ الخصائص الممتدة ودمجها بداخل البيئة الحالية
         Object.assign(processedEnv, extendedEnv);
       }
     }
   }
 
-  // 5️⃣ التطهير (Sanitization)
+  // مرحلة التطهير البرمجي: مسح النصوص المفرغة (Sanitization Stage)
   const shouldSanitize = opts.emptyStringAsUndefined ?? true;
   if (shouldSanitize) {
     for (const key in processedEnv) {
       if (processedEnv[key] === "") {
-        processedEnv[key] = undefined;
+        processedEnv[key] = undefined; // تحويل السلسلة الفارغة لقيمة undefined لتمر تحت بوابة الـ Fallback في Zod
       }
     }
   }
 
-  // 6️⃣ إرجاع الـ Proxy Shield المحمي
-  return createGuard(combinedSchema, {
-    runtimeEnv: processedEnv,
-    isServer: opts.isServer ?? typeof window === "undefined",
-    emptyStringAsUndefined: shouldSanitize,
-  }) as any;
+  console.log(`🛡️ [Muraqib Guards]: Building and executing runtime environment integrity validations...`);
+
+  // حقن البيانات النظيفة والمخطط المبني بداخل الحارس القياسي ومراقبة مخرجات الأمان
+  try {
+    const validatedGuard = createGuard(combinedSchema, {
+      runtimeEnv: processedEnv,
+      isServer: opts.isServer ?? typeof window === "undefined",
+      emptyStringAsUndefined: shouldSanitize,
+    });
+    
+    // إرجاع مخرجات الحارس بعد التحقق منها وتطهيرها بنجاح واستهداف الـ data الناتجة
+    return (validatedGuard?.data ?? validatedGuard) as any;
+  } catch (validationError: any) {
+    console.error(`💥 [Muraqib Guards Error]: Environment core validation crashed!`);
+    if (validationError && validationError.errors) {
+      console.error(`📋 Detailed breakdown of violating fields:`, JSON.stringify(validationError.errors, null, 2));
+    }
+    throw validationError; // إطلاق الخطأ للأعلى ليقوم الـ Orchestrator بالتقاطه والتراجع الفوري
+  }
 }
 
-// ===================================================
-// 🔄 Backward Compatibility: createEnvWithPresets
-// ===================================================
+// =========================================================================
+// 4. الدالة المغلّفة المسهلة لتجربة المطورين (Developer Experience - DX Wrapper)
+// =========================================================================
+
 export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
   userSchema: T,
   options: {
@@ -147,13 +178,32 @@ export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
     isServer?: boolean;
     emptyStringAsUndefined?: boolean;
     presets?: PresetInput[]; 
+    schedule?: string; 
   }
-): Readonly<InferSchema<T>> {
+): z.infer<z.ZodObject<T>> | null {
+  
+  // بناء كائن السيرفر المبدئي ونسخ مخططات المطور المباشرة
+  const serverSchema: Record<string, z.ZodTypeAny> = { ...userSchema };
+
+  // البحث عن الـ Presets وحقنها آلياً خلف الكواليس لتقليل التكرار
+  if (options.presets && Array.isArray(options.presets)) {
+    for (const presetName of options.presets) {
+      const preset = presetsMap[presetName];
+      if (preset) {
+        console.log(`📦 [Muraqib Presets]: Injecting centralized validation schema for [${presetName}] package group.`);
+        Object.assign(serverSchema, preset); // دمج خصائص الحزمة الجاهزة (مثل الـ tokens أو الـ URLs)
+      } else {
+        console.warn(`⚠️  [Muraqib Presets Warning]: Declared preset package "${presetName}" was not found in the local registry.`);
+      }
+    }
+  }
+
+  // إرسال الكائن المهيأ بالكامل إلى محرك الحماية الأساسي مع حماية الأنواع بـ any للربط المرن
   return createEnv({
-    server: userSchema,
-    presets: options.presets,
+    server: serverSchema,
     runtimeEnv: options.runtimeEnv,
-    isServer: options.isServer,
     emptyStringAsUndefined: options.emptyStringAsUndefined,
-  }) as any;
+    isServer: options.isServer,
+    schedule: options.schedule,
+  } as any) as any;
 }

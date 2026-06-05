@@ -1,3 +1,6 @@
+// src/presets.ts
+import { z } from "zod";
+
 export interface VercelEnv {
   VERCEL?: string;
   CI?: string;
@@ -30,11 +33,24 @@ export interface RailwayEnv {
   RAILWAY_PROJECT_ID?: string;
 }
 
-export type PresetInput = "vercel" | "neonVercel" | "supabaseVercel" | "railway";
+export type PresetInput = "vercel" | "neonVercel" | "supabaseVercel" | "railway" | "next"; // 👈 أضفنا "next" لتطابق كود التيست
 
 export const presetsMap: Record<PresetInput, Record<string, any>> = {
-  vercel: {},
-  neonVercel: {},
-  supabaseVercel: {},
-  railway: {}
+  vercel: {
+    VERCEL: z.string().optional(),
+    VERCEL_ENV: z.enum(["development", "preview", "production"]).optional(),
+  },
+  next: {
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(), // 👈 حقن سكيما حقيقية لحل مشكلة الـ undefined في التيست الأول!
+  },
+  neonVercel: {
+    DATABASE_URL: z.string().url(),
+  },
+  supabaseVercel: {
+    SUPABASE_URL: z.string().url(),
+    SUPABASE_ANON_KEY: z.string(),
+  },
+  railway: {
+    RAILWAY_ENVIRONMENT_NAME: z.string().optional(),
+  }
 };

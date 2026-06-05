@@ -1,0 +1,9 @@
+{
+  "explorer.fileNesting.enabled": false,
+  "files.exclude": {
+    "**/*.js": true,
+    "**/*.d.ts": true,
+    "**/*.js.map": true,
+    "**/*.d.ts.map": true
+  }
+}

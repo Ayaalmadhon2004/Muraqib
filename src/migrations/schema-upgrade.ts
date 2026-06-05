@@ -1,25 +1,38 @@
-import { AbstractMuraqibMigration } from './abstract-migration.ts';
-import { getNewEnvValue } from '../core/muraqib-env.ts'; // استدعاء المحرك المركزي هان
+import { AbstractMuraqibMigration } from './abstract-migration.js';
+import { getMuraqibNewVersionValue} from '../core/muraqib-version.js';
+import type {VersionUpdateStrategy} from '../core/muraqib-version.js';
 
 export class SchemaUpgradeMigration extends AbstractMuraqibMigration {
-  
-  constructor(private strategy: 'replace' | 'keep-both' | 'merge') {
-    super();
+  override readonly propertyName: string; 
+  private readonly targetVersion: string;  
+  private readonly strategy: VersionUpdateStrategy;
+
+  constructor(
+    packageName: string,
+    targetVersion: string,
+    strategy: VersionUpdateStrategy,
+    originalDependencies: Record<string, string>,
+    migratedDependencies: Record<string, string>
+  ) {
+    super(originalDependencies, migratedDependencies);
+    this.propertyName = packageName;
+    this.targetVersion = targetVersion;
+    this.strategy = strategy;
   }
 
-  override run(oldEnvContent: string): string {
-    // لوجيك فرضي: استخراج قيمة المتغير القديم من الملف
-    const currentSecret = 'my-old-secret-key'; 
-    const targetSecret = 'my-newly-generated-secure-key';
+  override run(value: unknown): void {
+    const currentVersion = typeof value === 'string' ? value : String(value || '');
 
-    // حقن وتطبيق لوجيك الصياغة الذكي هنا 👇
-    const finalValue = getNewEnvValue({
-      currentValue: currentSecret,
-      newValue: targetSecret,
+    const finalVersion = getMuraqibNewVersionValue({
+      currentVersion: currentVersion,
+      newVersion: this.targetVersion,
       updateStrategy: this.strategy,
-      secretKey: 'APP_SECRET',
+      packageName: this.propertyName,
     });
 
-    return `APP_SECRET=${finalValue}`;
+    if (finalVersion) {
+      this.migratedConfig[this.propertyName] = finalVersion;
+    }
   }
 }
+//why we are using this file and what is the general idea of it 
