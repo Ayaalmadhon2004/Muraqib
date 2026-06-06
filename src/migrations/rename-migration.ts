@@ -1,7 +1,6 @@
-import { AbstractMuraqibMigration } from './abstract-migration.ts';
+import { AbstractMuraqibMigration } from './abstract-migration.js';
 
-// why we use this file also woth also inherit ?
-export class RenamePropertyMigration extends AbstractMuraqibMigration {
+=export class RenamePropertyMigration extends AbstractMuraqibMigration {
   override readonly propertyName: string;
   private readonly newPropertyName: string;
 

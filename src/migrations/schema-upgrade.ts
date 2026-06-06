@@ -35,4 +35,4 @@ export class SchemaUpgradeMigration extends AbstractMuraqibMigration {
     }
   }
 }
-//why we are using this file and what is the general idea of it 
+// الملف التنفيذي لترقية إصدارات الحزم في ملف package.json باستخدام استراتيجيات مرنة للتحديث، مع الحفاظ على التوافقية والأمان في التحديثات.
