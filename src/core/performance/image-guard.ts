@@ -1,4 +1,3 @@
-// src/core/performance/image-guard.ts
 import fs from 'fs';
 import path from 'path';
 import { Request, Response, NextFunction } from 'express';
@@ -9,10 +8,10 @@ export const muraqibImageGuard = (staticDir: string) =>
       const fullPath = path.join(staticDir, req.url);
       if (fs.existsSync(fullPath)) {
         const stats = fs.statSync(fullPath);
-        if (stats.size > 1024 * 1024) { // 1MB
+        if (stats.size > 1024 * 1024) {
           console.warn(`⚠️ [Performance]: Oversized asset detected: ${req.url} (${(stats.size/1024/1024).toFixed(2)} MB)`);
         }
       }
     }
     next();
-};
+  };
