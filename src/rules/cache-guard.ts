@@ -21,3 +21,4 @@ export const runtimeCacheSchema = z.object({
   ENABLE_SERVER_COMPRESSION: z.string().transform((v) => v === "true"),
   STATIC_ASSETS_CACHE_MAX_AGE: z.string().transform(Number),
 });
+
