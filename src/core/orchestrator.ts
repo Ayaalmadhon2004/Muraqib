@@ -136,11 +136,11 @@ export async function runMuraqibUpgradeOrchestrator({
       console.log(`ℹ️  [Info]: No core schema modifications required for ${packageName} v${targetMajor}.`);
     }
 
-    const targetBuildCommand = currentEnv.commands.build;  // what this line means and why exactly commands.build 
+    const targetBuildCommand = currentEnv.commands.build; 
     console.log(`🧪 [Integrity]: Testing project build after upgrade using: "${targetBuildCommand}"...`);
     
     try {
-      execSync(targetBuildCommand, { stdio: 'ignore' }); // what do we mean by { stdio: 'ignore' } and what is the difference of inherit 
+      execSync(targetBuildCommand, { stdio: 'ignore' }); 
       console.log(`💎 [Integrity Success]: Project build passed smoothly on [${currentEnv.type.toUpperCase()}] environment! Safe to commit.`);
     } catch (buildError) {
       console.error(`💥 [Integrity Failure]: Project build failed after updating ${packageName}!`);
