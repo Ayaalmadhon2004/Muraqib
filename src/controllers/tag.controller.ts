@@ -1,5 +1,5 @@
 // src/controllers/tag.controller.ts
-import { Request, Response, NextFunction } from "express";
+import { type Request, type Response, type NextFunction, Router } from 'express';
 import { TagService } from "../services/tag.service.js";
 
 export const TagController = {
@@ -12,3 +12,4 @@ export const TagController = {
     }
   }
 };
+//why and for what i am  using this file ?

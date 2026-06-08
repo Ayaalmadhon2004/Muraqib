@@ -20,6 +20,7 @@
   "homepage": "https://github.com/Ayaalmadhon2004/Muraqib#readme",
   "devDependencies": {
     "@standard-schema/spec": "^1.1.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.2",
     "@types/semver": "^7.7.1",
@@ -28,6 +29,7 @@
   "dependencies": {
     "@sindresorhus/is": "^8.1.0",
     "arktype": "^2.2.0",
+    "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "semver": "^7.8.2",
     "valibot": "^1.4.0",
