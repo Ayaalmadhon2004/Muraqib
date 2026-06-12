@@ -1,5 +1,5 @@
 export const analyzeRenderBlocking = (htmlContent: string) => {
-  const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);//how it knows the place of htmlContent 
+  const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
   
   if (!headMatch) return { status: 'ok', message: 'لم يتم العثور على <head>' };
 

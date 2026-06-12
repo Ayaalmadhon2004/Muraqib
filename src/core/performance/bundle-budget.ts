@@ -9,4 +9,3 @@ export const checkBundleBudget = (totalBytes: number) => {
       : 'ممتاز: الصفحة ضمن حدود الـ TCP Congestion Window.'
   };
 };
-//what is bundle and where is it ? 

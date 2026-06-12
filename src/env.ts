@@ -8,6 +8,8 @@ import { isWithinSchedule } from "./utils/schedule-validator.js";
 import { runImagePerformanceAudit } from "./core/performance/image-guard.js";
 import { runComprehensiveBundleAudit } from "./rules/bundle-budget.js";
 import path from "path";
+import { performLiveLatencyAudit } from './core/performance/network-latency-advisor.js';
+
 
 // =========================================================================
 // 1. الأنواع البرمجية العميقة واستنتاج مخرجات الأنواع (Advanced TypeScript Meta-programming)
@@ -233,3 +235,11 @@ try {
 }
 
 /****************************************************************** */
+
+// دالة تجريبية لتشغيل الفحص الحي أمام اللجنة
+async function runMuraqibNetworkCheck() {
+    // سنفحص API حقيقي خارجي كمثال، ويمكنكِ استبداله بـ API مشروعكِ "Gaza Pulse" لاحقاً
+    await performLiveLatencyAudit('https://jsonplaceholder.typicode.com/posts/1'); 
+}
+
+runMuraqibNetworkCheck();
