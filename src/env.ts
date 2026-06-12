@@ -6,6 +6,8 @@ import { createGuard } from "./core/standard.js";
 import type { GuardSchema } from "./core/types.js";
 import { isWithinSchedule } from "./utils/schedule-validator.js";
 import { runImagePerformanceAudit } from "./core/performance/image-guard.js";
+import { runComprehensiveBundleAudit } from "./rules/bundle-budget.js";
+import path from "path";
 
 // =========================================================================
 // 1. الأنواع البرمجية العميقة واستنتاج مخرجات الأنواع (Advanced TypeScript Meta-programming)
@@ -217,3 +219,17 @@ try {
 }
 
 /********************************************************** */
+
+// سيناريو تجريبي (Simulation) لغرض فحص الكود وعرضه للجنة المناقشة:
+// تخيلي أن المبرمج يحفظ ملفاً اسمه 'page.tsx' وحجم الصفحة الناتج تضخم وأصبح 25KB
+const simulatedBundleSizeInBytes = 25 * 1024; // 25 KB (أكبر من 14)
+const activeUserFile = path.join(process.cwd(), "src/app/page.tsx"); // مسار افتراضي لملف مبرمج
+
+try {
+    // تشغيل نظام مراقبة وتشخيص الـ Bundle فوراً
+    runComprehensiveBundleAudit(simulatedBundleSizeInBytes, activeUserFile);
+} catch (error) {
+    console.error("🚨 [Muraqib]: Error during bundle diagnostics execution:", error);
+}
+
+/****************************************************************** */
