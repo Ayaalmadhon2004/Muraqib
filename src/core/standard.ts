@@ -1,6 +1,6 @@
 // src/core/standard.ts
 import { z } from "zod";
-import { GuardOptions } from "./types.js";
+import type { GuardOptions } from "./types.js";
 
 export function createGuard<T extends z.ZodRawShape>(
   schema: z.ZodObject<T>,

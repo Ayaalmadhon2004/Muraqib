@@ -5,6 +5,7 @@ import type { PresetInput } from "./presets.js";
 import { createGuard } from "./core/standard.js";
 import type { GuardSchema } from "./core/types.js";
 import { isWithinSchedule } from "./utils/schedule-validator.js";
+import { runImagePerformanceAudit } from "./core/performance/image-guard.js";
 
 // =========================================================================
 // 1. الأنواع البرمجية العميقة واستنتاج مخرجات الأنواع (Advanced TypeScript Meta-programming)
@@ -207,3 +208,12 @@ export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
     schedule: options.schedule,
   } as any) as any;
 }
+
+/****************************************************** */
+try {
+    runImagePerformanceAudit();
+} catch (error) {
+    console.error("🚨 [Muraqib]: Something went wrong during image auditing:", error);
+}
+
+/********************************************************** */

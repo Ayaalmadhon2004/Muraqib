@@ -1,8 +1,5 @@
-// src/core/performance/render-blocking.ts
-
 export const analyzeRenderBlocking = (htmlContent: string) => {
-  // فحص السكريبتات التي لا تحتوي على defer أو async في الـ head
-  const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
+  const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);//how it knows the place of htmlContent 
   
   if (!headMatch) return { status: 'ok', message: 'لم يتم العثور على <head>' };
 

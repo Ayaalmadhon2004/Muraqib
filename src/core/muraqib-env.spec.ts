@@ -1,10 +1,9 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { getNewEnvValue } from '../muraqib-env.ts';
+import { getNewEnvValue } from '../muraqib-env.js';
 
 describe('Muraqib Env Transformation Engine (SemVer Inspired)', () => {
   
   beforeEach(() => {
-    // تصفير الكاش وعزل الـ Modules تماماً قبل كل فحص لضمان الدقة
     vi.resetModules();
   });
 
@@ -38,7 +37,6 @@ describe('Muraqib Env Transformation Engine (SemVer Inspired)', () => {
       secretKey: 'OAUTH_SCOPES',
     });
 
-    // الـ repo:status مكررة، الدالة ح تدمجهم وتحذف التكرار تلقائياً 👇
     expect(result).toBe('org:read,repo:status,user:email');
   });
 });

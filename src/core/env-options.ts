@@ -1,5 +1,3 @@
-// src/core/env-options.ts
-
 export interface MuraqibOptionInfo {
   configName: string; 
   type: 'string' | 'number' | 'boolean';

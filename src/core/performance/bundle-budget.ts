@@ -1,6 +1,4 @@
-// src/core/performance/bundle-budget.ts
 export const checkBundleBudget = (totalBytes: number) => {
-  // الكتاب يشير إلى أهمية البقاء تحت سقف الـ 14KB في أول رحلة (Initial Congestion Window)
   const LIMIT_KB = 14; 
   const isOverLimit = (totalBytes / 1024) > LIMIT_KB;
 
@@ -11,3 +9,4 @@ export const checkBundleBudget = (totalBytes: number) => {
       : 'ممتاز: الصفحة ضمن حدود الـ TCP Congestion Window.'
   };
 };
+//what is bundle and where is it ? 

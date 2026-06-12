@@ -1,4 +1,3 @@
-// src/services/auth.service.ts
 import * as bcrypt from 'bcryptjs';
 import { RegisterInput } from '../models/register-input.model.js';
 import { UserRepository } from '../repositories/user.repository.js';
@@ -17,7 +16,6 @@ export class AuthService {
       });
       return user;
     } catch (error) {
-      // هنا نراقب الخطأ ونعيد صياغته
       throw new HttpException(422, { errors: { email: ['could not create user'] } });
     }
   }
