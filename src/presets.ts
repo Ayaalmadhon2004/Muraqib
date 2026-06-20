@@ -33,7 +33,7 @@ export interface RailwayEnv {
   RAILWAY_PROJECT_ID?: string;
 }
 
-export type PresetInput = "vercel" | "neonVercel" | "supabaseVercel" | "railway" | "next"; // 👈 أضفنا "next" لتطابق كود التيست
+export type PresetInput = "vercel" | "neonVercel" | "supabaseVercel" | "railway" | "next"; 
 
 export const presetsMap: Record<PresetInput, Record<string, any>> = {
   vercel: {
@@ -41,7 +41,7 @@ export const presetsMap: Record<PresetInput, Record<string, any>> = {
     VERCEL_ENV: z.enum(["development", "preview", "production"]).optional(),
   },
   next: {
-    NEXT_PUBLIC_APP_URL: z.string().url().optional(), // 👈 حقن سكيما حقيقية لحل مشكلة الـ undefined في التيست الأول!
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(), 
   },
   neonVercel: {
     DATABASE_URL: z.string().url(),

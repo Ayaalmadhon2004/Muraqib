@@ -1,72 +1,79 @@
-// src/index.ts
 import { z } from "zod";
-import path from "path";
 import { createEnv, createEnvWithPresets } from "./env.js";
 import { cachePerformanceSchema } from "./rules/cache-guard.js";
 import { runImagePerformanceAudit } from "./core/performance/image-guard.js";
 import { runComprehensiveBundleAudit } from "./rules/bundle-budget.js";
 import { performLiveLatencyAudit } from './core/performance/network-latency-advisor.js';
 
-// 🏛️ 1. الـ Facade Pattern: تصدير الواجهات النظيفة للعالم الخارجي دون تلويث
 export { createEnv, createEnvWithPresets } from "./env.js";
 export * from "./core/types.js";
 export * from "./core/standard.js";
 
-// 🚀 2. حلبة الاختبار الذكية والمنسقة (Playground Boundary)
 async function runMuraqibPlayground() {
   console.log(`===========================================================`);
   console.log(`🛡️  [Muraqib Facade Playground]: Initiating System Audits...`);
   console.log(`===========================================================\n`);
 
-  // --- [المحطة الأولى: فحص الصور] ---
+  // --- [المحطة الأولى: فحص الصور الساكنة] ---
   try {
     runImagePerformanceAudit();
   } catch (error) {
     console.error("🚨 Error during image auditing:", error);
   }
 
-  // --- [المحطة الثانية: فحص الـ Bundle] ---
-  const simulatedBundleSizeInBytes = 25 * 1024; // 25 KB
-  const activeUserFile = path.join(process.cwd(), "src/app/page.tsx");
+  // --- [المحطة الثانية: فحص الـ Bundle الديناميكي الشامل] ---
   try {
-    runComprehensiveBundleAudit(simulatedBundleSizeInBytes, activeUserFile);
+    runComprehensiveBundleAudit();
   } catch (error) {
     console.error("🚨 Error during bundle diagnostics:", error);
   }
 
   // --- [المحطة الثالثة: فحص الشبكة والـ Latency الحية] ---
   try {
-    await performLiveLatencyAudit('https://jsonplaceholder.typicode.com/posts/1'); 
+    await performLiveLatencyAudit('https://jsonplaceholder.typicode.com/comments');
   } catch (error) {
     console.error("🚨 Error during network check:", error);
   }
 
-  // --- [المحطة الرابعة: فحص الـ .env والإعدادات] ---
+  // --- [المحطة الرابعة: فحص الـ .env الشامل والموحد] ---
   try {
-    console.log("\n🧬 Simulating Successful Environment Generation...");
+    console.log("\n🧬 [Muraqib Core]: Booting up Live Environment Integrity Audits...");
+    
+    // 🌟 دمج متكامل ومغلق الأقواس بشكل سليم لجمع كل الانتهاكات معاً
     createEnvWithPresets(
-      { DATABASE_URL: z.string().url(), PORT: z.string().transform(Number) },
       {
-        runtimeEnv: {
-          DATABASE_URL: "postgresql://localhost:5432/muraqib_db",
-          PORT: "3000",
-        },
+        DATABASE_URL: z.string().url(),
+        PORT: z.string().transform(Number).pipe(z.number({ invalid_type_error: "Must be a valid numeric string" })),
+        ...cachePerformanceSchema 
+      },
+      {
+        runtimeEnv: process.env, 
         presets: ["next"],
         isServer: true
       }
     );
 
-    console.log("\n📉 Testing Cache Performance Rules (Intentional Failure simulation)...");
-    createEnv({
-      server: { ...cachePerformanceSchema },
-      runtimeEnv: {
-        STATIC_ASSETS_CACHE_MAX_AGE: "600", // ❌ قيمة صغيرة جداً ستطلق تحذيراً
-        ENABLE_SERVER_COMPRESSION: "false"
-      }
-    });
-
   } catch (error: any) {
-    console.log(`\n🚨 [Muraqib Intercepted]: Validation caught inside the Facade Boundary!`);
+    console.log(`\n🚨 [Muraqib Intercepted]: Validation caught runtime errors directly from the physical .env file!`);
+    
+    let finalErrorsToDisplay: any[] = [];
+
+    if (error && error.isMuraqibCustom && Array.isArray(error.errors)) {
+      finalErrorsToDisplay = error.errors.map((e: any) => ({ Field: e.path, Message: e.message }));
+    } else if (error && error.issues && Array.isArray(error.issues)) {
+      finalErrorsToDisplay = error.issues.map((e: any) => ({ Field: e.path.join('.'), Message: e.message }));
+    } else if (error && error.errors && Array.isArray(error.errors)) {
+      finalErrorsToDisplay = error.errors.map((e: any) => ({
+        Field: Array.isArray(e.path) ? e.path.join('.') : (e.field || 'UNKNOWN'),
+        Message: e.message
+      }));
+    }
+
+    if (finalErrorsToDisplay.length > 0) {
+       console.table(finalErrorsToDisplay);
+    } else {
+       console.error("📋 Raw Error Log:", error);
+    }
   }
 }
 

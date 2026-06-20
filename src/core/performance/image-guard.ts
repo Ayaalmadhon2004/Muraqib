@@ -20,18 +20,18 @@ const scanDirectoryForImages = (dirPath: string, violations: ImageViolation[] = 
 
     for (const file of files) {
         const fullPath = path.join(dirPath, file);
-        const stat = fs.statSync(fullPath); //what is these lines means ?
+        const stat = fs.statSync(fullPath); 
 
         if (stat.isDirectory()) {
             scanDirectoryForImages(fullPath, violations);
         } else {
             const ext = path.extname(fullPath).toLowerCase();
             if (IMAGE_EXTENSIONS.includes(ext)) {
-                const fileSize = stat.size; // الحجم بالـ Bytes
+                const fileSize = stat.size; 
 
-                if (fileSize > MAX_IMAGE_SIZE_BYTES) {//بس يفحص الملف الاكبر مش اصغر ؟؟ صح 
+                if (fileSize > MAX_IMAGE_SIZE_BYTES) {
                     const sizeKB = Math.round(fileSize / 1024);
-                    violations.push({ //from where we have violations ? 
+                    violations.push({ 
                         filePath: path.relative(process.cwd(), fullPath),
                         sizeKB,
                         recommendation: `⚡ [Muraqib Suggestion]: Convert this image to '.webp' or compress it. WebP can reduce size up to 75%.`
@@ -46,7 +46,7 @@ const scanDirectoryForImages = (dirPath: string, violations: ImageViolation[] = 
 
 export const runImagePerformanceAudit = () => {
     console.log("\n📷 [Muraqib]: Starting Image Assets Size Audit...");
-    const rootDir = process.cwd(); //what is this cwd ? and for what we use it ?
+    const rootDir = process.cwd(); 
     const violations = scanDirectoryForImages(rootDir);
 
     if (violations.length > 0) {
@@ -59,8 +59,6 @@ export const runImagePerformanceAudit = () => {
         });
         
         console.log("=================================================================");
-        // يمكنكِ تفعيل السطر التالي إذا كنتِ تريدين إيقاف تشغيل المشروع تماماً عند وجود صور ثقيلة:
-        // process.exit(1);
     } else {
         console.log("✅ [Muraqib]: All images are optimized and under the 500KB safety limit.");
     }

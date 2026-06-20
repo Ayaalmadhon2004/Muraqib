@@ -50,7 +50,7 @@ export async function fetchRemoteMuraqibPresets(url: string): Promise<PackageGro
     const remoteData = await response.json();
     if (Array.isArray(remoteData)) {  
       return remoteData as PackageGroup[];
-    }
+    }orm 
     return MURAQIB_LOCAL_PRESETS;
   } 
   

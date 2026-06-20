@@ -1,10 +1,34 @@
-// src/env.ts
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
 import { presetsMap } from "./presets.js";
 import type { PresetInput } from "./presets.js";
 import { createGuard } from "./core/standard.js";
 import type { GuardSchema } from "./core/types.js";
 import { isWithinSchedule } from "./utils/schedule-validator.js";
+
+// =========================================================================
+// 🌟 صمام أمان محلي: قراءة وشحن ملف الـ .env الحقيقي تلقائياً من الكود مباشرة
+// =========================================================================
+const envPath = path.join(process.cwd(), ".env");
+if (fs.existsSync(envPath)) {
+  try {
+    const envContent = fs.readFileSync(envPath, "utf-8");
+    envContent.split(/\r?\n/).forEach((line) => {
+      const trimmedLine = line.trim();
+      if (trimmedLine && !trimmedLine.startsWith("#")) {
+        const [key, ...valueParts] = trimmedLine.split("=");
+        if (key && valueParts.length > 0) {
+          const rawValue = valueParts.join("=").trim();
+          const cleanValue = rawValue.replace(/^['"]|['"]$/g, "");
+          process.env[key.trim()] = cleanValue;
+        }
+      }
+    });
+  } catch (e) {
+    console.warn(`⚠️ [Muraqib Loader]: Built-in .env parser bypassed.`);
+  }
+}
 
 // =========================================================================
 // 1. الأنواع البرمجية العميقة واستنتاج مخرجات الأنواع
@@ -101,6 +125,22 @@ export function createEnv<
 
   console.log(`🛡️ [Muraqib Guards]: Building and executing runtime environment integrity validations...`);
 
+  // 🌟 الفحص الذكي وتجميع الأخطاء بشكل مفرود ونظيف باستخدام .issues
+  const validationResult = combinedSchema.safeParse(processedEnv);
+
+  if (!validationResult.success) {
+    console.error(`💥 [Muraqib Guards Error]: Environment core validation crashed with multiple violations!`);
+    
+    const customError = {
+      isMuraqibCustom: true,
+      errors: validationResult.error.issues.map((e) => ({
+        path: e.path.join('.'),
+        message: e.message
+      }))
+    };
+    throw customError; 
+  }
+
   try {
     const validatedGuard = createGuard(combinedSchema, {
       runtimeEnv: processedEnv,
@@ -110,7 +150,6 @@ export function createEnv<
     
     return (validatedGuard?.data ?? validatedGuard) as any;
   } catch (validationError: any) {
-    console.error(`💥 [Muraqib Guards Error]: Environment core validation crashed!`);
     throw validationError;
   }
 }
@@ -143,7 +182,7 @@ export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
 
   return createEnv({
     server: serverSchema,
-    runtimeEnv: options.runtimeEnv,
+    runtimeEnv: options.runtimeEnv ?? process.env,
     emptyStringAsUndefined: options.emptyStringAsUndefined,
     isServer: options.isServer,
     schedule: options.schedule,

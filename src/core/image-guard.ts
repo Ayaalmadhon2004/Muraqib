@@ -18,6 +18,6 @@ export function createMuraqibImageGuard(staticAssetsDirectory: string) {
         }
       }
     }
-    next();//why i am putting a next ?
+    next();
   };
 }
