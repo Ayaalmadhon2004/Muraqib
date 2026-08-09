@@ -8,37 +8,144 @@ import type { GuardSchema } from "./core/types.js";
 import { isWithinSchedule } from "./utils/schedule-validator.js";
 
 // =========================================================================
-// 🌟 صمام أمان محلي: قراءة وشحن ملف الـ .env الحقيقي تلقائياً من الكود مباشرة
+// 0.  إعدادات عامة وثوابت
 // =========================================================================
-const envPath = path.join(process.cwd(), ".env");
-if (fs.existsSync(envPath)) {
-  try {
-    const envContent = fs.readFileSync(envPath, "utf-8");
-    envContent.split(/\r?\n/).forEach((line) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine && !trimmedLine.startsWith("#")) {
-        const [key, ...valueParts] = trimmedLine.split("=");
-        if (key && valueParts.length > 0) {
-          const rawValue = valueParts.join("=").trim();
-          const cleanValue = rawValue.replace(/^['"]|['"]$/g, "");
-          process.env[key.trim()] = cleanValue;
+const DEFAULT_ENV_FILES = [".env", ".env.local", ".env.development", ".env.production"];
+const SKIP_ENV_VALIDATION = process.env.SKIP_ENV_VALIDATION === "true" || process.env.SKIP_ENV_VALIDATION === "1";
+
+// =========================================================================
+// 1.  محمّل ملفات .env متقدم (يدعم comments, multiline, expansion)
+// =========================================================================
+export interface LoadEnvOptions {
+  /** مسار المجلد اللي بدّك تدور فيه على .env (default: process.cwd()) */
+  cwd?: string;
+  /** قائمة بأسماء ملفات .env بدّك تحمّلها بالترتيب (default: ['.env', '.env.local', '.env.${NODE_ENV}']) */
+  files?: string[];
+  /** إذا true، ما بتغيّر process.env (default: false) */
+  preserveProcessEnv?: boolean;
+  /** إذا true، بتطبّع log لكل ملف محمّل (default: false) */
+  verbose?: boolean;
+}
+
+/**
+ * 🌟 محمّل .env متقدم — يدعم:
+ *   • inline comments:  KEY=value # هذا تعليق
+ *   • multiline values:  KEY="line1\nline2"
+ *   • variable expansion: DATABASE_URL=$BASE_URL/db
+ *   • quotes handling:   KEY='value' أو KEY="value"
+ */
+export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
+  const cwd = options.cwd ?? process.cwd();
+  const nodeEnv = process.env.NODE_ENV ?? "development";
+  const files = options.files ?? [
+    ".env",
+    `.env.${nodeEnv}`,
+    ".env.local",
+  ];
+  const loaded: Record<string, string> = {};
+
+  for (const file of files) {
+    const filePath = path.join(cwd, file);
+    if (!fs.existsSync(filePath)) continue;
+
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      const lines = content.split(/\r?\n/);
+      let currentKey: string | null = null;
+      let currentValue = "";
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // تعليق كامل
+        if (!trimmed || trimmed.startsWith("#")) continue;
+
+        // multiline value (مستمرة من السطر السابق)
+        if (currentKey !== null && (currentValue.endsWith("\\") || line.startsWith(" "))) {
+          currentValue += line.replace(/\\$/, "").trimStart();
+          continue;
         }
+
+        // inline comment: نفصل على أول # بس لو مش داخل quotes
+        const commentIndex = findCommentIndex(trimmed);
+        const meaningful = commentIndex >= 0 ? trimmed.slice(0, commentIndex) : trimmed;
+
+        // export prefix
+        const withoutExport = meaningful.replace(/^export\s+/, "").trim();
+
+        const eqIndex = withoutExport.indexOf("=");
+        if (eqIndex < 0) continue;
+
+        const key = withoutExport.slice(0, eqIndex).trim();
+        let rawValue = withoutExport.slice(eqIndex + 1).trim();
+
+        // quotes handling
+        const quoteMatch = rawValue.match(/^(['"])(.*)\1$/);
+        if (quoteMatch) {
+          rawValue = quoteMatch[2];
+        }
+
+        currentKey = key;
+        currentValue = rawValue;
+
+        // expansion: $VAR و ${VAR}
+        currentValue = expandVariables(currentValue, { ...process.env, ...loaded });
+
+        loaded[key] = currentValue;
+
+        if (options.verbose) {
+          console.log(`📄 [Muraqib Loader]: Loaded ${key} from ${file}`);
+        }
+
+        currentKey = null;
       }
-    });
-  } catch (e) {
-    console.warn(`⚠️ [Muraqib Loader]: Built-in .env parser bypassed.`);
+    } catch (e) {
+      console.warn(`⚠️ [Muraqib Loader]: Failed to load ${filePath}`);
+    }
   }
+
+  // merge into process.env
+  if (!options.preserveProcessEnv) {
+    for (const [k, v] of Object.entries(loaded)) {
+      process.env[k] = v;
+    }
+  }
+
+  return loaded;
+}
+
+/** يلاقي أول # مش داخل quotes */
+function findCommentIndex(str: string): number {
+  let inQuotes: string | null = null;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === '"' || ch === "'") {
+      if (inQuotes === ch) inQuotes = null;
+      else if (!inQuotes) inQuotes = ch;
+    } else if (ch === "#" && !inQuotes) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/** يفكّ $VAR و ${VAR} */
+function expandVariables(value: string, env: Record<string, string | undefined>): string {
+  return value.replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g, (_, name) => {
+    return env[name] ?? "";
+  });
 }
 
 // =========================================================================
-// 1. الأنواع البرمجية العميقة واستنتاج مخرجات الأنواع
+// 2.  الأنواع البرمجية العميقة (مُصلّحة)
 // =========================================================================
 export type InferSchema<T extends GuardSchema> = {
-  [K in keyof T]: T[K] extends { _output: infer O }
+  [K in keyof T]: T[K] extends { ["~standard"]: { types: { output: infer O } } }
     ? O
-    : T[K] extends { infer: () => infer O }
+    : T[K] extends { _output: infer O }
     ? O
-    : T[K] extends { ["~standard"]: { types: { output: infer O } } }
+    : T[K] extends { infer: infer O }
     ? O
     : any;
 };
@@ -50,7 +157,7 @@ export type IntersectExtension<T extends any[]> = T extends [infer Head, ...infe
 export type ErrorMessage<T extends string> = T & { __brand: "ErrorMessage" };
 
 // =========================================================================
-// 2. واجهات إعدادات المحرك المركزي
+// 3.  واجهات إعدادات المحرك المركزي (مُكملة)
 // =========================================================================
 export interface CreateEnvOptions<
   TPrefix extends string = "",
@@ -75,10 +182,22 @@ export interface CreateEnvOptions<
   emptyStringAsUndefined?: boolean;
   isServer?: boolean;
   schedule?: string;
+
+  // ✅ جديد
+  /** إذا true، ما بيفحصش الـ env (مفيد في CI/build) */
+  skipValidation?: boolean;
+  /** إذا true، بيخفي كل console logs */
+  silent?: boolean;
+  /** callback مخصص لتنسيق الـ error messages */
+  formatError?: (issues: Array<{ path: string; message: string }>) => string;
+  /** مسار ملف .env مخصص (أو array) */
+  envFilePath?: string | string[];
+  /** إذا true، ما بيغيّرش process.env */
+  preserveProcessEnv?: boolean;
 }
 
 // =========================================================================
-// 3. المحرك المعماري الأساسي لبناء وتدقيق بيئة العمل
+// 4.  المحرك المعماري الأساسي (مُكمل ومُصلّح)
 // =========================================================================
 export function createEnv<
   TPrefix extends string = "",
@@ -89,12 +208,29 @@ export function createEnv<
   opts: CreateEnvOptions<TPrefix, TServer, TClient, TExtends>
 ): InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends> | null {
   
+  // ── load .env files ──
+  if (opts.envFilePath) {
+    const files = Array.isArray(opts.envFilePath) ? opts.envFilePath : [opts.envFilePath];
+    loadEnv({ files, preserveProcessEnv: opts.preserveProcessEnv, verbose: !opts.silent });
+  }
+
+  // ── schedule check ──
   if (opts.schedule) {
     const allowedToRun = isWithinSchedule(opts.schedule);
     if (!allowedToRun) {
-      console.warn(`⏳ [Muraqib Scheduler]: Process halted automatically. Current time is outside allowed cron window.`);
+      if (!opts.silent) {
+        console.warn(`⏳ [Muraqib Scheduler]: Process halted automatically. Current time is outside allowed cron window.`);
+      }
       return null;
     }
+  }
+
+  // ── skip validation (CI/build) ──
+  if (opts.skipValidation ?? SKIP_ENV_VALIDATION) {
+    if (!opts.silent) {
+      console.log(`⏭️ [Muraqib Guards]: Validation skipped (skipValidation=true).`);
+    }
+    return process.env as any;
   }
 
   let rawSchemaFields: Record<string, any> = {
@@ -123,22 +259,33 @@ export function createEnv<
     }
   }
 
-  console.log(`🛡️ [Muraqib Guards]: Building and executing runtime environment integrity validations...`);
+  if (!opts.silent) {
+    console.log(`🛡️ [Muraqib Guards]: Building and executing runtime environment integrity validations...`);
+  }
 
-  // 🌟 الفحص الذكي وتجميع الأخطاء بشكل مفرود ونظيف باستخدام .issues
+  // ── validation ──
   const validationResult = combinedSchema.safeParse(processedEnv);
 
   if (!validationResult.success) {
-    console.error(`💥 [Muraqib Guards Error]: Environment core validation crashed with multiple violations!`);
-    
-    const customError = {
-      isMuraqibCustom: true,
-      errors: validationResult.error.issues.map((e) => ({
-        path: e.path.join('.'),
-        message: e.message
-      }))
-    };
-    throw customError; 
+    const issues = validationResult.error.issues.map((e) => ({
+      path: e.path.join("."),
+      message: e.message,
+    }));
+
+    const formattedMessage = opts.formatError
+      ? opts.formatError(issues)
+      : `💥 [Muraqib Guards Error]: Environment core validation crashed with ${issues.length} violation(s)!\n\n` +
+        issues.map((i) => `  • ${i.path}: ${i.message}`).join("\n");
+
+    if (!opts.silent) {
+      console.error(formattedMessage);
+    }
+
+    // ✅ Error instance حقيقي (مش object عادي)
+    const error = new Error(formattedMessage);
+    (error as any).isMuraqibCustom = true;
+    (error as any).errors = issues;
+    throw error;
   }
 
   try {
@@ -155,7 +302,38 @@ export function createEnv<
 }
 
 // =========================================================================
-// 4. الدالة المغلّفة المسهلة لتجربة المطورين (Presets Wrapper)
+// 5.  safeCreateEnv — بيرجّع نتيجة بدل ما يرمي (جديد)
+// =========================================================================
+export function safeCreateEnv<
+  TPrefix extends string = "",
+  TServer extends GuardSchema = Record<string, never>,
+  TClient extends GuardSchema = Record<string, never>,
+  TExtends extends any[] = []
+>(
+  opts: CreateEnvOptions<TPrefix, TServer, TClient, TExtends>
+): {
+  success: true;
+  data: InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends>;
+} | {
+  success: false;
+  error: { path: string; message: string }[];
+} {
+  try {
+    const data = createEnv(opts);
+    if (data === null) {
+      return { success: false, error: [{ path: "schedule", message: "Outside allowed schedule window." }] };
+    }
+    return { success: true, data: data as any };
+  } catch (e: any) {
+    if (e.isMuraqibCustom && Array.isArray(e.errors)) {
+      return { success: false, error: e.errors };
+    }
+    return { success: false, error: [{ path: "unknown", message: e.message ?? "Unknown error" }] };
+  }
+}
+
+// =========================================================================
+// 6.  الدالة المغلّفة المسهلة (Presets Wrapper) — مُكملة
 // =========================================================================
 export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
   userSchema: T,
@@ -163,8 +341,13 @@ export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
     runtimeEnv: Record<string, any>;
     isServer?: boolean;
     emptyStringAsUndefined?: boolean;
-    presets?: PresetInput[]; 
-    schedule?: string; 
+    presets?: PresetInput[];
+    schedule?: string;
+    skipValidation?: boolean;
+    silent?: boolean;
+    formatError?: (issues: Array<{ path: string; message: string }>) => string;
+    envFilePath?: string | string[];
+    preserveProcessEnv?: boolean;
   }
 ): z.infer<z.ZodObject<T>> | null {
   
@@ -174,8 +357,12 @@ export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
     for (const presetName of options.presets) {
       const preset = presetsMap[presetName];
       if (preset) {
-        console.log(`📦 [Muraqib Presets]: Injecting centralized validation schema for [${presetName}].`);
+        if (!options.silent) {
+          console.log(`📦 [Muraqib Presets]: Injecting centralized validation schema for [${presetName}].`);
+        }
         Object.assign(serverSchema, preset);
+      } else if (!options.silent) {
+        console.warn(`⚠️ [Muraqib Presets]: Unknown preset [${presetName}] — skipped.`);
       }
     }
   }
@@ -186,5 +373,10 @@ export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
     emptyStringAsUndefined: options.emptyStringAsUndefined,
     isServer: options.isServer,
     schedule: options.schedule,
+    skipValidation: options.skipValidation,
+    silent: options.silent,
+    formatError: options.formatError,
+    envFilePath: options.envFilePath,
+    preserveProcessEnv: options.preserveProcessEnv,
   } as any) as any;
 }
