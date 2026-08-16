@@ -1,158 +1,86 @@
 import fs from "fs";
 import path from "path";
+import { globSync } from "glob";
 
-export interface ConfigAuditResult {
-  isValid: boolean;
+export interface AsyncAuditResult {
+  isClean: boolean;
   reports: string[];
-  missingFiles: string[];
-  invalidConfigs: string[];
-  insecureConfigs: string[];
+  unhandledPromises: string[];
+  missingAwait: string[];
+  callbackHell: string[];
+  floatingPromises: string[];
 }
 
-const REQUIRED_CONFIG_FILES = [
-  "tsconfig.json",
-  ".gitignore",
-  "package.json",
-];
-
-const SECURITY_SENSITIVE_KEYS = [
-  "password",
-  "secret",
-  "token",
-  "api_key",
-  "private_key",
-  "auth",
-  "credential",
-];
-
-export function performConfigAudit(targetPath: string): ConfigAuditResult {
+export function performAsyncAudit(targetPath: string): AsyncAuditResult {
   const reports: string[] = [];
-  const missingFiles: string[] = [];
-  const invalidConfigs: string[] = [];
-  const insecureConfigs: string[] = [];
+  const unhandledPromises: string[] = [];
+  const missingAwait: string[] = [];
+  const callbackHell: string[] = [];
+  const floatingPromises: string[] = [];
 
-  // Check required config files
-  for (const file of REQUIRED_CONFIG_FILES) {
-    const filePath = path.join(targetPath, file);
-    if (!fs.existsSync(filePath)) {
-      missingFiles.push(file);
-      reports.push(`Missing required config file: ${file}`);
-    }
-  }
+  const tsFiles = globSync("**/*.ts", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**", "tests/**"] });
+  const jsFiles = globSync("**/*.js", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
+  const allFiles = [...tsFiles, ...jsFiles];
 
-  // Check tsconfig.json
-  const tsconfigPath = path.join(targetPath, "tsconfig.json");
-  if (fs.existsSync(tsconfigPath)) {
-    try {
-      const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf-8"));
+  for (const file of allFiles) {
+    const content = fs.readFileSync(file, "utf-8");
+    const relativePath = path.relative(targetPath, file);
+    const lines = content.split("\n");
 
-      if (!tsconfig.compilerOptions) {
-        invalidConfigs.push("tsconfig.json missing compilerOptions");
-        reports.push("tsconfig.json: missing compilerOptions section");
-      } else {
-        if (tsconfig.compilerOptions.strict !== true) {
-          insecureConfigs.push("tsconfig.json: strict mode disabled");
-          reports.push("tsconfig.json: strict mode is disabled — enable for type safety");
-        }
-        if (tsconfig.compilerOptions.noImplicitAny !== true) {
-          insecureConfigs.push("tsconfig.json: noImplicitAny disabled");
-          reports.push("tsconfig.json: noImplicitAny is disabled — enable to catch implicit any types");
-        }
-        if (tsconfig.compilerOptions.noUnusedLocals !== true) {
-          reports.push("tsconfig.json: noUnusedLocals is disabled — enable to catch dead code");
-        }
-        if (tsconfig.compilerOptions.noUnusedParameters !== true) {
-          reports.push("tsconfig.json: noUnusedParameters is disabled — enable to catch unused params");
-        }
-        if (tsconfig.compilerOptions.exactOptionalPropertyTypes !== true) {
-          reports.push("tsconfig.json: exactOptionalPropertyTypes is disabled — enable for stricter optional types");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineNum = i + 1;
+
+      // Detect unhandled promises (new Promise without catch)
+      if (line.match(/new\s+Promise\s*\(/) && !content.includes(".catch(")) {
+        const nextLines = lines.slice(i, Math.min(i + 5, lines.length)).join(" ");
+        if (!nextLines.includes(".catch(")) {
+          unhandledPromises.push(`${relativePath}:${lineNum}`);
+          reports.push(`Unhandled Promise at ${relativePath}:${lineNum} — add .catch() or try/catch`);
         }
       }
-    } catch (e) {
-      invalidConfigs.push("tsconfig.json is invalid JSON");
-      reports.push("tsconfig.json: invalid JSON format");
-    }
-  }
 
-  // Check package.json
-  const packagePath = path.join(targetPath, "package.json");
-  if (fs.existsSync(packagePath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
-
-      if (!pkg.scripts || !pkg.scripts.test) {
-        reports.push("package.json: missing test script");
-      }
-      if (!pkg.scripts || !pkg.scripts.build) {
-        reports.push("package.json: missing build script");
-      }
-      if (!pkg.scripts || !pkg.scripts.lint) {
-        reports.push("package.json: missing lint script");
-      }
-
-      // Check for security-sensitive values in package.json
-      const pkgStr = JSON.stringify(pkg);
-      for (const key of SECURITY_SENSITIVE_KEYS) {
-        const regex = new RegExp(`"${key}\s*":\s*"[^"]+"`, "i");
-        if (regex.test(pkgStr)) {
-          insecureConfigs.push(`package.json contains exposed ${key}`);
-          reports.push(`Security risk: package.json exposes ${key} in plaintext`);
+      // Detect missing await on async function calls
+      const asyncCallMatch = line.match(/(\w+)\s*\(\s*\)\s*;?\s*$/);
+      if (asyncCallMatch) {
+        const funcName = asyncCallMatch[1];
+        // Check if function is declared async in the same file
+        const funcDeclRegex = new RegExp(`(?:async\s+function|const\s+${funcName}\s*=\s*async)\s+${funcName}`);
+        if (funcDeclRegex.test(content) && !line.includes("await") && !line.includes("return")) {
+          missingAwait.push(`${relativePath}:${lineNum}`);
+          reports.push(`Missing await for async call: ${relativePath}:${lineNum} — ${funcName}() returns a Promise`);
         }
       }
-    } catch (e) {
-      invalidConfigs.push("package.json is invalid JSON");
-      reports.push("package.json: invalid JSON format");
-    }
-  }
 
-  // Check .env files for exposed secrets
-  const envFiles = fs.readdirSync(targetPath).filter((f) => f.startsWith(".env"));
-  for (const envFile of envFiles) {
-    const envPath = path.join(targetPath, envFile);
-    const envContent = fs.readFileSync(envPath, "utf-8");
-
-    for (const key of SECURITY_SENSITIVE_KEYS) {
-      const regex = new RegExp(`${key}=.+`, "i");
-      if (regex.test(envContent)) {
-        insecureConfigs.push(`${envFile} contains ${key}`);
-        reports.push(`Security risk: ${envFile} exposes ${key} — use a secrets manager`);
+      // Detect callback hell (nested callbacks > 3 levels)
+      const callbackDepth = (line.match(/\)/g) || []).length;
+      if (callbackDepth >= 3 && line.includes("callback") || line.includes("cb")) {
+        callbackHell.push(`${relativePath}:${lineNum}`);
+        reports.push(`Potential callback hell: ${relativePath}:${lineNum} — consider async/await`);
       }
-    }
 
-    // Check if .env is in .gitignore
-    const gitignorePath = path.join(targetPath, ".gitignore");
-    if (fs.existsSync(gitignorePath)) {
-      const gitignore = fs.readFileSync(gitignorePath, "utf-8");
-      if (!gitignore.includes(".env")) {
-        insecureConfigs.push(".env not in .gitignore");
-        reports.push("Security risk: .env files are not in .gitignore — secrets may be committed");
+      // Detect floating promises (Promise not assigned, awaited, or returned)
+      if (line.match(/(?:fetch|axios|request|query)\s*\(/) && !line.includes("await") && !line.includes("return") && !line.includes("const") && !line.includes("let") && !line.includes("var")) {
+        floatingPromises.push(`${relativePath}:${lineNum}`);
+        reports.push(`Floating Promise: ${relativePath}:${lineNum} — Promise result is ignored`);
       }
-    }
-  }
 
-  // Check for .env in repo (shouldn't be committed)
-  const gitPath = path.join(targetPath, ".git");
-  if (fs.existsSync(gitPath)) {
-    const trackedEnv = path.join(targetPath, ".env");
-    if (fs.existsSync(trackedEnv)) {
-      try {
-        const { execSync } = require("child_process");
-        const isTracked = execSync("git ls-files .env", { cwd: targetPath, encoding: "utf-8" }).trim();
-        if (isTracked) {
-          insecureConfigs.push(".env is tracked by git");
-          reports.push("Critical security risk: .env is tracked by git — secrets are exposed in version control");
+      // Detect .then() chains without .catch()
+      if (line.includes(".then(") && !line.includes(".catch(")) {
+        const nextLines = lines.slice(i, Math.min(i + 3, lines.length)).join(" ");
+        if (!nextLines.includes(".catch(")) {
+          reports.push(`Promise chain without .catch(): ${relativePath}:${lineNum}`);
         }
-      } catch (e) {
-        // git command failed, skip
       }
     }
   }
 
   return {
-    isValid: reports.length === 0,
+    isClean: reports.length === 0,
     reports,
-    missingFiles,
-    invalidConfigs,
-    insecureConfigs,
+    unhandledPromises,
+    missingAwait,
+    callbackHell,
+    floatingPromises,
   };
 }
