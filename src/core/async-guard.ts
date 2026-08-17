@@ -1,3 +1,6 @@
+// src/core/async-guard.ts
+// فحص أنماط الـ async/await والـ Promise عبر ملفات المشروع (فحص نصي/heuristic
+// بسيط، مش AST حقيقي — كافي لمشروع بحجم Muraqib بدون تعقيد إضافي).
 import fs from "fs";
 import path from "path";
 import { globSync } from "glob";
@@ -18,7 +21,7 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
   const callbackHell: string[] = [];
   const floatingPromises: string[] = [];
 
-  const tsFiles = globSync("**/*.ts", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**", "tests/**"] });
+  const tsFiles = globSync("**/*.ts", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**", "tests/**", "**/*.spec.ts"] });
   const jsFiles = globSync("**/*.js", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
   const allFiles = [...tsFiles, ...jsFiles];
 
@@ -29,6 +32,7 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      if (line === undefined) continue;
       const lineNum = i + 1;
 
       // Detect unhandled promises (new Promise without catch)
@@ -42,10 +46,9 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
 
       // Detect missing await on async function calls
       const asyncCallMatch = line.match(/(\w+)\s*\(\s*\)\s*;?\s*$/);
-      if (asyncCallMatch) {
+      if (asyncCallMatch && asyncCallMatch[1]) {
         const funcName = asyncCallMatch[1];
-        // Check if function is declared async in the same file
-        const funcDeclRegex = new RegExp(`(?:async\s+function|const\s+${funcName}\s*=\s*async)\s+${funcName}`);
+        const funcDeclRegex = new RegExp(`(?:async\\s+function|const\\s+${funcName}\\s*=\\s*async)\\s+${funcName}`);
         if (funcDeclRegex.test(content) && !line.includes("await") && !line.includes("return")) {
           missingAwait.push(`${relativePath}:${lineNum}`);
           reports.push(`Missing await for async call: ${relativePath}:${lineNum} — ${funcName}() returns a Promise`);
@@ -53,8 +56,10 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
       }
 
       // Detect callback hell (nested callbacks > 3 levels)
+      // ملاحظة: كان في bug بأولوية العمليات (&& || بدون أقواس) كان بيخلي أي سطر
+      // فيه الحرفين "cb" (حتى لو مو كلمة callback فعلاً) يتحسب خطأ. صلحناها بأقواس صريحة.
       const callbackDepth = (line.match(/\)/g) || []).length;
-      if (callbackDepth >= 3 && line.includes("callback") || line.includes("cb")) {
+      if (callbackDepth >= 3 && (line.includes("callback") || /\bcb\b/.test(line))) {
         callbackHell.push(`${relativePath}:${lineNum}`);
         reports.push(`Potential callback hell: ${relativePath}:${lineNum} — consider async/await`);
       }
