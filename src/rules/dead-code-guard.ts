@@ -1,158 +1,99 @@
+// src/rules/dead-code-guard.ts
+// ملاحظة: هاد الملف كان اسمه "dead-code-guard" بس مضمونه فعلياً كان فحص
+// dependencies (منقول هلق لمكانه الصح بـ core/dependency-guard.ts). هون
+// منطق فحص "الكود الميت" الحقيقي: exports غير مستخدمة، دوال فاضية، وكود
+// بعد return/throw ما رح ينفّذ أبداً.
 import fs from "fs";
 import path from "path";
 import { globSync } from "glob";
 
-export interface DependencyAuditResult {
+export interface DeadCodeAuditResult {
   isClean: boolean;
   reports: string[];
-  circularDependencies: string[][];
-  outdatedPackages: string[];
-  duplicatePackages: string[];
-  deprecatedImports: string[];
+  emptyFunctions: string[];
+  unreachableBranches: string[];
+  unusedExports: string[];
 }
 
-const DEPRECATED_APIS: Record<string, string> = {
-  "url.parse": "Use new URL() constructor instead",
-  "querystring": "Use URLSearchParams instead",
-  "crypto.createDecipher": "Use crypto.createDecipheriv instead",
-  "Buffer": "Use Buffer.from() or Buffer.alloc() explicitly",
-  "fs.exists": "Use fs.existsSync or fs.promises.access instead",
-  "process.binding": "Deprecated internal API",
-  "__dirname": "Use import.meta.url with fileURLToPath instead (ESM)",
-  "require": "Use dynamic import() instead (ESM)",
-};
-
-export function performDependencyAudit(targetPath: string): DependencyAuditResult {
+export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
   const reports: string[] = [];
-  const circularDependencies: string[][] = [];
-  const outdatedPackages: string[] = [];
-  const duplicatePackages: string[] = [];
-  const deprecatedImports: string[] = [];
+  const emptyFunctions: string[] = [];
+  const unreachableBranches: string[] = [];
+  const unusedExports: string[] = [];
 
-  const tsFiles = globSync("**/*.ts", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
-  const jsFiles = globSync("**/*.js", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
-  const allFiles = [...tsFiles, ...jsFiles];
+  const tsFiles = globSync("**/*.ts", {
+    cwd: targetPath,
+    absolute: true,
+    ignore: ["node_modules/**", "dist/**", "**/*.spec.ts", "**/*.d.ts"],
+  });
 
-  // Build dependency graph
-  const graph: Map<string, Set<string>> = new Map();
+  // نجمع محتوى كل الملفات مرة وحدة، عشان فحص "هل الـ export مستخدم بمكان تاني"
+  // ما يعيد قراءة نفس الملفات مرات كتير (أداء أفضل).
+  const fileContents = new Map<string, string>();
+  for (const file of tsFiles) {
+    fileContents.set(file, fs.readFileSync(file, "utf-8"));
+  }
 
-  for (const file of allFiles) {
-    const content = fs.readFileSync(file, "utf-8");
+  for (const file of tsFiles) {
+    const content = fileContents.get(file)!;
     const relativePath = path.relative(targetPath, file);
-    graph.set(relativePath, new Set());
+    const lines = content.split("\n");
 
-    // Detect imports
-    const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
-    let match;
-    while ((match = importRegex.exec(content)) !== null) {
-      const importPath = match[1];
-
-      // Check deprecated APIs
-      for (const [deprecated, suggestion] of Object.entries(DEPRECATED_APIS)) {
-        if (content.includes(deprecated)) {
-          deprecatedImports.push(`${relativePath}: ${deprecated} — ${suggestion}`);
-          reports.push(`Deprecated API usage: ${relativePath} uses ${deprecated}`);
-        }
-      }
-
-      if (importPath.startsWith(".") || importPath.startsWith("/")) {
-        const resolved = path.resolve(path.dirname(file), importPath);
-        const possiblePaths = [
-          resolved,
-          resolved + ".ts",
-          resolved + ".js",
-          path.join(resolved, "index.ts"),
-          path.join(resolved, "index.js"),
-        ];
-
-        for (const p of possiblePaths) {
-          if (fs.existsSync(p)) {
-            const targetRelative = path.relative(targetPath, p);
-            graph.get(relativePath)!.add(targetRelative);
-            break;
-          }
-        }
-      }
+    // 1) دوال فاضية: function foo() {} أو arrow function {} بدون أي محتوى فعلي
+    const emptyFuncRegex = /(?:function\s+(\w+)\s*\([^)]*\)|(\w+)\s*(?::\s*[^=]+)?=\s*(?:async\s*)?\([^)]*\)\s*=>)\s*{\s*}/g;
+    let match: RegExpExecArray | null;
+    while ((match = emptyFuncRegex.exec(content)) !== null) {
+      const name = match[1] || match[2] || "anonymous";
+      const lineNum = content.slice(0, match.index).split("\n").length;
+      emptyFunctions.push(`${relativePath}:${lineNum} (${name})`);
+      reports.push(`Empty function body: ${relativePath}:${lineNum} — "${name}" does nothing`);
     }
-  }
 
-  // Detect circular dependencies using DFS
-  const visited = new Set<string>();
-  const recursionStack = new Set<string>();
-  const pathStack: string[] = [];
+    // 2) كود بعد return/throw/break/continue بنفس الـ block (unreachable)
+    for (let i = 0; i < lines.length - 1; i++) {
+      const currentLine = lines[i];
+      const followingLine = lines[i + 1];
+      if (currentLine === undefined || followingLine === undefined) continue;
+      const line = currentLine.trim();
+      const nextLine = followingLine.trim();
 
-  function dfs(node: string): void {
-    visited.add(node);
-    recursionStack.add(node);
-    pathStack.push(node);
+      const endsControlFlow = /^(return|throw)\b.*;?$/.test(line) || /^(break|continue);?$/.test(line);
+      const nextIsMeaningful =
+        nextLine.length > 0 &&
+        nextLine !== "}" &&
+        !nextLine.startsWith("//") &&
+        !nextLine.startsWith("*") &&
+        !nextLine.startsWith("/*") &&
+        !nextLine.startsWith("case ") &&
+        !nextLine.startsWith("default:");
 
-    const neighbors = graph.get(node) || new Set();
-    for (const neighbor of neighbors) {
-      if (!visited.has(neighbor)) {
-        dfs(neighbor);
-      } else if (recursionStack.has(neighbor)) {
-        const cycleStart = pathStack.indexOf(neighbor);
-        const cycle = pathStack.slice(cycleStart).concat([neighbor]);
-        circularDependencies.push(cycle);
-        reports.push(`Circular dependency detected: ${cycle.join(" → ")}`);
+      if (endsControlFlow && nextIsMeaningful) {
+        unreachableBranches.push(`${relativePath}:${i + 2}`);
+        reports.push(`Unreachable code: ${relativePath}:${i + 2} — appears right after a "${line.split(/\s+/)[0]}" statement`);
       }
     }
 
-    pathStack.pop();
-    recursionStack.delete(node);
-  }
+    // 3) exports مش مستخدمة بأي ملف تاني بالمشروع
+    const exportRegex = /export\s+(?:async\s+)?(?:function|class|const|interface|type)\s+([A-Za-z_$][\w$]*)/g;
+    while ((match = exportRegex.exec(content)) !== null) {
+      const exportedName = match[1];
+      if (!exportedName || exportedName === "default") continue;
 
-  for (const node of graph.keys()) {
-    if (!visited.has(node)) {
-      dfs(node);
-    }
-  }
-
-  // Check package.json for duplicates and outdated
-  const packageJsonPath = path.join(targetPath, "package.json");
-  if (fs.existsSync(packageJsonPath)) {
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-    const allDeps = {
-      ...pkg.dependencies,
-      ...pkg.devDependencies,
-    };
-
-    // Check for duplicate major versions (simplified check)
-    const depNames = Object.keys(allDeps);
-    for (const dep of depNames) {
-      const version = allDeps[dep];
-      if (version && version.startsWith("^0.")) {
-        outdatedPackages.push(`${dep}@${version} — v0.x may have breaking changes`);
-        reports.push(`Potentially outdated: ${dep}@${version} (v0.x detected)`);
+      let usedElsewhere = false;
+      for (const [otherFile, otherContent] of fileContents) {
+        if (otherFile === file) continue;
+        // فحص بسيط: هل الاسم موجود جوا سطر import بملف تاني
+        const importUsageRegex = new RegExp(`import\\s+[^;]*\\b${exportedName}\\b[^;]*from`, "m");
+        if (importUsageRegex.test(otherContent)) {
+          usedElsewhere = true;
+          break;
+        }
       }
-    }
 
-    // Check lock file for duplicates
-    const lockPaths = [
-      path.join(targetPath, "package-lock.json"),
-      path.join(targetPath, "yarn.lock"),
-      path.join(targetPath, "pnpm-lock.yaml"),
-    ];
-
-    for (const lockPath of lockPaths) {
-      if (fs.existsSync(lockPath)) {
-        const lockContent = fs.readFileSync(lockPath, "utf-8");
-        const packageCounts: Map<string, number> = new Map();
-
-        const nameRegex = /"([^"]+@\d+\.\d+\.\d+)"/g;
-        let lockMatch;
-        while ((lockMatch = nameRegex.exec(lockContent)) !== null) {
-          const fullName = lockMatch[1];
-          const pkgName = fullName.split("@")[0];
-          packageCounts.set(pkgName, (packageCounts.get(pkgName) || 0) + 1);
-        }
-
-        for (const [pkgName, count] of packageCounts) {
-          if (count > 1) {
-            duplicatePackages.push(`${pkgName} (${count} versions in lock file)`);
-            reports.push(`Duplicate package versions: ${pkgName} appears ${count} times`);
-          }
-        }
+      if (!usedElsewhere) {
+        const lineNum = content.slice(0, match.index).split("\n").length;
+        unusedExports.push(`${relativePath}:${lineNum} (${exportedName})`);
+        reports.push(`Potentially unused export: ${relativePath}:${lineNum} — "${exportedName}" is not imported anywhere else`);
       }
     }
   }
@@ -160,9 +101,8 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   return {
     isClean: reports.length === 0,
     reports,
-    circularDependencies,
-    outdatedPackages,
-    duplicatePackages,
-    deprecatedImports,
+    emptyFunctions,
+    unreachableBranches,
+    unusedExports,
   };
 }
