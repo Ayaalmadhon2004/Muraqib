@@ -59,7 +59,7 @@ export async function performSecurityAudit(targetUrl: string): Promise<SecurityA
         if (headers["strict-transport-security"]) {
           const hsts = String(headers["strict-transport-security"]);
           const maxAgeMatch = hsts.match(/max-age=(\d+)/);
-          if (maxAgeMatch) {
+          if (maxAgeMatch && maxAgeMatch[1]) {
             const maxAge = parseInt(maxAgeMatch[1], 10);
             if (maxAge < 31536000) {
               reports.push(`HSTS max-age too low: ${maxAge}s (recommended: 31536000s)`);
