@@ -1,75 +1,161 @@
+// src/core/dependency-guard.ts
+// ملاحظة تاريخية: هاد الملف كان فيه بالغلط نسخة طبق الأصل من async-guard.ts
+// (نفس الدوال والاسم performAsyncAudit)، بينما محتواه الحقيقي (فحص الاعتماديات:
+// circular deps, outdated/duplicate packages, deprecated APIs) كان محطوط بالغلط
+// جوا rules/dead-code-guard.ts. رجّعنا كل محتوى لمكانه الصح.
 import fs from "fs";
 import path from "path";
 import { globSync } from "glob";
 
-export interface AsyncAuditResult {
+export interface DependencyAuditResult {
   isClean: boolean;
   reports: string[];
-  unhandledPromises: string[];
-  missingAwait: string[];
-  callbackHell: string[];
-  floatingPromises: string[];
+  circularDependencies: string[][];
+  outdatedPackages: string[];
+  duplicatePackages: string[];
+  deprecatedImports: string[];
 }
 
-export function performAsyncAudit(targetPath: string): AsyncAuditResult {
-  const reports: string[] = [];
-  const unhandledPromises: string[] = [];
-  const missingAwait: string[] = [];
-  const callbackHell: string[] = [];
-  const floatingPromises: string[] = [];
+const DEPRECATED_APIS: Record<string, string> = {
+  "url.parse": "Use new URL() constructor instead",
+  "querystring": "Use URLSearchParams instead",
+  "crypto.createDecipher": "Use crypto.createDecipheriv instead",
+  "Buffer": "Use Buffer.from() or Buffer.alloc() explicitly",
+  "fs.exists": "Use fs.existsSync or fs.promises.access instead",
+  "process.binding": "Deprecated internal API",
+  "__dirname": "Use import.meta.url with fileURLToPath instead (ESM)",
+  "require": "Use dynamic import() instead (ESM)",
+};
 
-  const tsFiles = globSync("**/*.ts", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**", "tests/**"] });
+export function performDependencyAudit(targetPath: string): DependencyAuditResult {
+  const reports: string[] = [];
+  const circularDependencies: string[][] = [];
+  const outdatedPackages: string[] = [];
+  const duplicatePackages: string[] = [];
+  const deprecatedImports: string[] = [];
+
+  const tsFiles = globSync("**/*.ts", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
   const jsFiles = globSync("**/*.js", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
   const allFiles = [...tsFiles, ...jsFiles];
+
+  // Build dependency graph
+  const graph: Map<string, Set<string>> = new Map();
 
   for (const file of allFiles) {
     const content = fs.readFileSync(file, "utf-8");
     const relativePath = path.relative(targetPath, file);
-    const lines = content.split("\n");
+    graph.set(relativePath, new Set());
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const lineNum = i + 1;
+    const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
+    let match;
+    while ((match = importRegex.exec(content)) !== null) {
+      const importPath = match[1];
+      if (!importPath) continue;
 
-      // Detect unhandled promises (new Promise without catch)
-      if (line.match(/new\s+Promise\s*\(/) && !content.includes(".catch(")) {
-        const nextLines = lines.slice(i, Math.min(i + 5, lines.length)).join(" ");
-        if (!nextLines.includes(".catch(")) {
-          unhandledPromises.push(`${relativePath}:${lineNum}`);
-          reports.push(`Unhandled Promise at ${relativePath}:${lineNum} — add .catch() or try/catch`);
+      for (const [deprecated, suggestion] of Object.entries(DEPRECATED_APIS)) {
+        if (content.includes(deprecated)) {
+          deprecatedImports.push(`${relativePath}: ${deprecated} — ${suggestion}`);
+          reports.push(`Deprecated API usage: ${relativePath} uses ${deprecated}`);
         }
       }
 
-      // Detect missing await on async function calls
-      const asyncCallMatch = line.match(/(\w+)\s*\(\s*\)\s*;?\s*$/);
-      if (asyncCallMatch) {
-        const funcName = asyncCallMatch[1];
-        // Check if function is declared async in the same file
-        const funcDeclRegex = new RegExp(`(?:async\s+function|const\s+${funcName}\s*=\s*async)\s+${funcName}`);
-        if (funcDeclRegex.test(content) && !line.includes("await") && !line.includes("return")) {
-          missingAwait.push(`${relativePath}:${lineNum}`);
-          reports.push(`Missing await for async call: ${relativePath}:${lineNum} — ${funcName}() returns a Promise`);
+      if (importPath.startsWith(".") || importPath.startsWith("/")) {
+        const resolved = path.resolve(path.dirname(file), importPath);
+        const possiblePaths = [
+          resolved,
+          resolved + ".ts",
+          resolved + ".js",
+          path.join(resolved, "index.ts"),
+          path.join(resolved, "index.js"),
+        ];
+
+        for (const p of possiblePaths) {
+          if (fs.existsSync(p)) {
+            const targetRelative = path.relative(targetPath, p);
+            graph.get(relativePath)!.add(targetRelative);
+            break;
+          }
         }
       }
+    }
+  }
 
-      // Detect callback hell (nested callbacks > 3 levels)
-      const callbackDepth = (line.match(/\)/g) || []).length;
-      if (callbackDepth >= 3 && line.includes("callback") || line.includes("cb")) {
-        callbackHell.push(`${relativePath}:${lineNum}`);
-        reports.push(`Potential callback hell: ${relativePath}:${lineNum} — consider async/await`);
+  // Detect circular dependencies using DFS
+  const visited = new Set<string>();
+  const recursionStack = new Set<string>();
+  const pathStack: string[] = [];
+
+  function dfs(node: string): void {
+    visited.add(node);
+    recursionStack.add(node);
+    pathStack.push(node);
+
+    const neighbors = graph.get(node) || new Set();
+    for (const neighbor of neighbors) {
+      if (!visited.has(neighbor)) {
+        dfs(neighbor);
+      } else if (recursionStack.has(neighbor)) {
+        const cycleStart = pathStack.indexOf(neighbor);
+        const cycle = pathStack.slice(cycleStart).concat([neighbor]);
+        circularDependencies.push(cycle);
+        reports.push(`Circular dependency detected: ${cycle.join(" → ")}`);
       }
+    }
 
-      // Detect floating promises (Promise not assigned, awaited, or returned)
-      if (line.match(/(?:fetch|axios|request|query)\s*\(/) && !line.includes("await") && !line.includes("return") && !line.includes("const") && !line.includes("let") && !line.includes("var")) {
-        floatingPromises.push(`${relativePath}:${lineNum}`);
-        reports.push(`Floating Promise: ${relativePath}:${lineNum} — Promise result is ignored`);
+    pathStack.pop();
+    recursionStack.delete(node);
+  }
+
+  for (const node of graph.keys()) {
+    if (!visited.has(node)) {
+      dfs(node);
+    }
+  }
+
+  // Check package.json for duplicates and outdated
+  const packageJsonPath = path.join(targetPath, "package.json");
+  if (fs.existsSync(packageJsonPath)) {
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+    const allDeps: Record<string, string> = {
+      ...pkg.dependencies,
+      ...pkg.devDependencies,
+    };
+
+    const depNames = Object.keys(allDeps);
+    for (const dep of depNames) {
+      const version = allDeps[dep];
+      if (version && version.startsWith("^0.")) {
+        outdatedPackages.push(`${dep}@${version} — v0.x may have breaking changes`);
+        reports.push(`Potentially outdated: ${dep}@${version} (v0.x detected)`);
       }
+    }
 
-      // Detect .then() chains without .catch()
-      if (line.includes(".then(") && !line.includes(".catch(")) {
-        const nextLines = lines.slice(i, Math.min(i + 3, lines.length)).join(" ");
-        if (!nextLines.includes(".catch(")) {
-          reports.push(`Promise chain without .catch(): ${relativePath}:${lineNum}`);
+    const lockPaths = [
+      path.join(targetPath, "package-lock.json"),
+      path.join(targetPath, "yarn.lock"),
+      path.join(targetPath, "pnpm-lock.yaml"),
+    ];
+
+    for (const lockPath of lockPaths) {
+      if (fs.existsSync(lockPath)) {
+        const lockContent = fs.readFileSync(lockPath, "utf-8");
+        const packageCounts: Map<string, number> = new Map();
+
+        const nameRegex = /"([^"]+@\d+\.\d+\.\d+)"/g;
+        let lockMatch;
+        while ((lockMatch = nameRegex.exec(lockContent)) !== null) {
+          const fullName = lockMatch[1];
+          if (!fullName) continue;
+          const pkgName = fullName.split("@")[0];
+          if (!pkgName) continue;
+          packageCounts.set(pkgName, (packageCounts.get(pkgName) || 0) + 1);
+        }
+
+        for (const [pkgName, count] of packageCounts) {
+          if (count > 1) {
+            duplicatePackages.push(`${pkgName} (${count} versions in lock file)`);
+            reports.push(`Duplicate package versions: ${pkgName} appears ${count} times`);
+          }
         }
       }
     }
@@ -78,9 +164,9 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
   return {
     isClean: reports.length === 0,
     reports,
-    unhandledPromises,
-    missingAwait,
-    callbackHell,
-    floatingPromises,
+    circularDependencies,
+    outdatedPackages,
+    duplicatePackages,
+    deprecatedImports,
   };
 }
