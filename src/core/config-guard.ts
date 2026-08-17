@@ -1,5 +1,11 @@
+// src/core/config-guard.ts
 import fs from "fs";
 import path from "path";
+// ملاحظة: كان الكود يستخدم require("child_process") جوا دالة، بس المشروع
+// كامل ESM ("type": "module" بـ package.json) — require غير معرّف أصلاً
+// بهالسياق وكان رح يكرش وقت التشغيل. صلحناها باستيراد named عادي بالأعلى.
+import { execSync } from "child_process";
+import { getSensitiveMuraqibEnvKeys } from "./env-options.js";
 
 export interface ConfigAuditResult {
   isValid: boolean;
@@ -9,11 +15,7 @@ export interface ConfigAuditResult {
   insecureConfigs: string[];
 }
 
-const REQUIRED_CONFIG_FILES = [
-  "tsconfig.json",
-  ".gitignore",
-  "package.json",
-];
+const REQUIRED_CONFIG_FILES = ["tsconfig.json", ".gitignore", "package.json"];
 
 const SECURITY_SENSITIVE_KEYS = [
   "password",
@@ -24,6 +26,61 @@ const SECURITY_SENSITIVE_KEYS = [
   "auth",
   "credential",
 ];
+
+/** بيشيل تعليقات // و/* *\/ من نص JSONC بشكل آمن (بدون ما يلمس محتوى الـ strings) */
+function stripJsonComments(input: string): string {
+  let result = "";
+  let inString = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+    const nextChar = input[i + 1];
+
+    if (inLineComment) {
+      if (char === "\n") {
+        inLineComment = false;
+        result += char;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && nextChar === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      result += char;
+      if (char === "\\") {
+        result += input[i + 1] ?? "";
+        i++;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      result += char;
+    } else if (char === "/" && nextChar === "/") {
+      inLineComment = true;
+      i++;
+    } else if (char === "/" && nextChar === "*") {
+      inBlockComment = true;
+      i++;
+    } else {
+      result += char;
+    }
+  }
+
+  return result;
+}
 
 export function performConfigAudit(targetPath: string): ConfigAuditResult {
   const reports: string[] = [];
@@ -44,7 +101,14 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   const tsconfigPath = path.join(targetPath, "tsconfig.json");
   if (fs.existsSync(tsconfigPath)) {
     try {
-      const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf-8"));
+      // tsconfig.json عادة بيكون JSONC (فيه تعليقات // و/* */)، مش JSON نضيف —
+      // JSON.parse العادي كان بيفشل بالغلط على أي تعليق. منشيلهم قبل الـ parse.
+      const rawTsconfig = fs.readFileSync(tsconfigPath, "utf-8");
+      const withoutComments = stripJsonComments(rawTsconfig);
+      // tsconfig.json كمان بتسمح بـ trailing commas (زي: { "a": 1, }) وهاد
+      // كمان مرفوض من JSON.parse العادي، فبنشيلها قبل الـ parse.
+      const stripped = withoutComments.replace(/,(\s*[}\]])/g, "$1");
+      const tsconfig = JSON.parse(stripped);
 
       if (!tsconfig.compilerOptions) {
         invalidConfigs.push("tsconfig.json missing compilerOptions");
@@ -90,10 +154,9 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
         reports.push("package.json: missing lint script");
       }
 
-      // Check for security-sensitive values in package.json
       const pkgStr = JSON.stringify(pkg);
       for (const key of SECURITY_SENSITIVE_KEYS) {
-        const regex = new RegExp(`"${key}\s*":\s*"[^"]+"`, "i");
+        const regex = new RegExp(`"${key}\\s*":\\s*"[^"]+"`, "i");
         if (regex.test(pkgStr)) {
           insecureConfigs.push(`package.json contains exposed ${key}`);
           reports.push(`Security risk: package.json exposes ${key} in plaintext`);
@@ -105,7 +168,8 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
     }
   }
 
-  // Check .env files for exposed secrets
+  // Check .env files for exposed secrets (عام + مفاتيح Muraqib الخاصة نفسها)
+  const sensitiveMuraqibKeys = getSensitiveMuraqibEnvKeys();
   const envFiles = fs.readdirSync(targetPath).filter((f) => f.startsWith(".env"));
   for (const envFile of envFiles) {
     const envPath = path.join(targetPath, envFile);
@@ -116,6 +180,16 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
       if (regex.test(envContent)) {
         insecureConfigs.push(`${envFile} contains ${key}`);
         reports.push(`Security risk: ${envFile} exposes ${key} — use a secrets manager`);
+      }
+    }
+
+    // فحص إضافي: متغيرات Muraqib الحساسة نفسها (زي MURAQIB_DB_URL) لازم ما
+    // تنكتب بشكل صريح بملف .env متتبّع، نفس منطق أي سر تاني.
+    for (const envKey of sensitiveMuraqibKeys) {
+      const regex = new RegExp(`^${envKey}\\s*=.+`, "m");
+      if (regex.test(envContent)) {
+        insecureConfigs.push(`${envFile} exposes sensitive Muraqib option ${envKey}`);
+        reports.push(`Security risk: ${envFile} exposes ${envKey} directly — consider a secrets manager`);
       }
     }
 
@@ -136,7 +210,6 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
     const trackedEnv = path.join(targetPath, ".env");
     if (fs.existsSync(trackedEnv)) {
       try {
-        const { execSync } = require("child_process");
         const isTracked = execSync("git ls-files .env", { cwd: targetPath, encoding: "utf-8" }).trim();
         if (isTracked) {
           insecureConfigs.push(".env is tracked by git");
