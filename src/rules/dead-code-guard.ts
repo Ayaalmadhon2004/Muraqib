@@ -1,11 +1,9 @@
 /**
  * DeadCodeAudit: أداة فحص ذكية لتحليل الكود الميت.
- * تقوم بتحديد الدوال الفارغة، الأسطر غير القابلة للوصول، والتصديرات (Exports) غير المستخدمة.
- * تستهدف الكود المصدري فقط مع استثناء الاختبارات وملفات البناء لضمان الدقة والسرعة.
+ * تعتمد على الـ file-scanner المشترك لضمان معمارية نظيفة وخالية من التكرار.
  */
-import fs from "fs";
 import path from "path";
-import { globSync } from "glob"; 
+import { scanProjectFiles } from "../utils/file-scanner.js";
 
 export interface DeadCodeAuditResult {
   isClean: boolean;
@@ -21,20 +19,16 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
   const unreachableBranches: string[] = [];
   const unusedExports: string[] = [];
 
-  const tsFiles = globSync("**/*.ts", {
-    cwd: targetPath, 
-    absolute: true,
-    ignore: ["node_modules/**", "dist/**", "**/*.spec.ts", "**/*.d.ts"], 
-  });
+  // استخدام الـ Scanner المشترك لجلب الملفات ومحتواها
+  const scannedFiles = scanProjectFiles(targetPath, ["ts"]);
 
   const fileContents = new Map<string, string>();
-  for (const file of tsFiles) {
-    fileContents.set(file, fs.readFileSync(file, "utf-8"));
-  } 
+  for (const scannedFile of scannedFiles) {
+    fileContents.set(scannedFile.path, scannedFile.content);
+  }
 
-  for (const file of tsFiles) {
-    const content = fileContents.get(file)!;
-    const relativePath = path.relative(targetPath, file);
+  for (const scannedFile of scannedFiles) {
+    const { path: filePath, relativePath, content } = scannedFile;
     const lines = content.split("\n");
 
     const emptyFuncRegex = /(?:function\s+(\w+)\s*\([^)]*\)|(\w+)\s*(?::\s*[^=]+)?=\s*(?:async\s*)?\([^)]*\)\s*=>)\s*{\s*}/g;
@@ -76,7 +70,7 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
 
       let usedElsewhere = false;
       for (const [otherFile, otherContent] of fileContents) {
-        if (otherFile === file) continue;
+        if (otherFile === filePath) continue;
         const importUsageRegex = new RegExp(`import\\s+[^;]*\\b${exportedName}\\b[^;]*from`, "m");
         if (importUsageRegex.test(otherContent)) {
           usedElsewhere = true;
