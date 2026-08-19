@@ -5,7 +5,7 @@
 // جوا rules/dead-code-guard.ts. رجّعنا كل محتوى لمكانه الصح.
 import fs from "fs";
 import path from "path";
-import { globSync } from "glob";
+import { scanProjectFiles } from "../utils/file-scanner.js";
 
 export interface DependencyAuditResult {
   isClean: boolean;
@@ -34,16 +34,14 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const duplicatePackages: string[] = [];
   const deprecatedImports: string[] = [];
 
-  const tsFiles = globSync("**/*.ts", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
-  const jsFiles = globSync("**/*.js", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
-  const allFiles = [...tsFiles, ...jsFiles];
+  // استخدام السكانر المشترك لجلب الملفات بدلاً من globSync المباشر
+  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
 
   // Build dependency graph
   const graph: Map<string, Set<string>> = new Map();
 
-  for (const file of allFiles) {
-    const content = fs.readFileSync(file, "utf-8");
-    const relativePath = path.relative(targetPath, file);
+  for (const scannedFile of scannedFiles) {
+    const { relativePath, content, fullPath } = scannedFile;
     graph.set(relativePath, new Set());
 
     const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
@@ -60,7 +58,7 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
       }
 
       if (importPath.startsWith(".") || importPath.startsWith("/")) {
-        const resolved = path.resolve(path.dirname(file), importPath);
+        const resolved = path.resolve(path.dirname(fullPath), importPath);
         const possiblePaths = [
           resolved,
           resolved + ".ts",

@@ -1,11 +1,9 @@
 // src/core/config-guard.ts
 import fs from "fs";
 import path from "path";
-// ملاحظة: كان الكود يستخدم require("child_process") جوا دالة، بس المشروع
-// كامل ESM ("type": "module" بـ package.json) — require غير معرّف أصلاً
-// بهالسياق وكان رح يكرش وقت التشغيل. صلحناها باستيراد named عادي بالأعلى.
 import { execSync } from "child_process";
 import { getSensitiveMuraqibEnvKeys } from "./env-options.js";
+import { scanProjectFiles } from "../utils/file-scanner.js";
 
 export interface ConfigAuditResult {
   isValid: boolean;
@@ -88,6 +86,9 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   const invalidConfigs: string[] = [];
   const insecureConfigs: string[] = [];
 
+  // التأكد من استخدام الـ scanner المشترك إذا لزم الأمر في مرور الملفات
+  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+
   // Check required config files
   for (const file of REQUIRED_CONFIG_FILES) {
     const filePath = path.join(targetPath, file);
@@ -101,12 +102,8 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   const tsconfigPath = path.join(targetPath, "tsconfig.json");
   if (fs.existsSync(tsconfigPath)) {
     try {
-      // tsconfig.json عادة بيكون JSONC (فيه تعليقات // و/* */)، مش JSON نضيف —
-      // JSON.parse العادي كان بيفشل بالغلط على أي تعليق. منشيلهم قبل الـ parse.
       const rawTsconfig = fs.readFileSync(tsconfigPath, "utf-8");
       const withoutComments = stripJsonComments(rawTsconfig);
-      // tsconfig.json كمان بتسمح بـ trailing commas (زي: { "a": 1, }) وهاد
-      // كمان مرفوض من JSON.parse العادي، فبنشيلها قبل الـ parse.
       const stripped = withoutComments.replace(/,(\s*[}\]])/g, "$1");
       const tsconfig = JSON.parse(stripped);
 
@@ -183,8 +180,6 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
       }
     }
 
-    // فحص إضافي: متغيرات Muraqib الحساسة نفسها (زي MURAQIB_DB_URL) لازم ما
-    // تنكتب بشكل صريح بملف .env متتبّع، نفس منطق أي سر تاني.
     for (const envKey of sensitiveMuraqibKeys) {
       const regex = new RegExp(`^${envKey}\\s*=.+`, "m");
       if (regex.test(envContent)) {

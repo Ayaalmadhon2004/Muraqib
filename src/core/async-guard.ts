@@ -1,12 +1,8 @@
 /**
  * AsyncAudit: أداة فحص ذكية لمراقبة العمليات غير المتزامنة (Asynchronous Operations).
- * الهدف: حماية النظام من الانهيار (Crashes) والأخطاء المنطقية الصامتة الناتجة عن سوء إدارة الوعود (Promises).
- * الوظيفة: تكتشف الوعود غير المعالجة، نسيان استخدام 'await'، تداخل الـ Callbacks المعقد، 
- * والوعود العائمة (Floating Promises) التي لا يتم متابعة نتائجها أو التقاط أخطائها.
+ * تعتمد على الـ file-scanner المشترك لضمان معمارية نظيفة وخالية من التكرار.
  */
-import fs from "fs";
-import path from "path";
-import { globSync } from "glob";
+import { scanProjectFiles } from "../utils/file-scanner.js";
 
 export interface AsyncAuditResult {
   isClean: boolean;
@@ -24,13 +20,11 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
   const callbackHell: string[] = [];
   const floatingPromises: string[] = [];
 
-  const tsFiles = globSync("**/*.ts", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**", "tests/**", "**/*.spec.ts"] });
-  const jsFiles = globSync("**/*.js", { cwd: targetPath, absolute: true, ignore: ["node_modules/**", "dist/**"] });
-  const allFiles = [...tsFiles, ...jsFiles];
+  // استخدام الـ Scanner المشترك لجلب ملفات TypeScript و JavaScript معاً
+  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
 
-  for (const file of allFiles) {
-    const content = fs.readFileSync(file, "utf-8");
-    const relativePath = path.relative(targetPath, file);
+  for (const scannedFile of scannedFiles) {
+    const { relativePath, content } = scannedFile;
     const lines = content.split("\n");
 
     for (let i = 0; i < lines.length; i++) {
@@ -38,6 +32,7 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
       if (line === undefined) continue;
       const lineNum = i + 1;
 
+      // 1. فحص الـ Promises غير المعالجة (بدون .catch)
       if (line.match(/new\s+Promise\s*\(/) && !content.includes(".catch(")) {
         const nextLines = lines.slice(i, Math.min(i + 5, lines.length)).join(" ");
         if (!nextLines.includes(".catch(")) {
@@ -46,6 +41,7 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
         }
       }
 
+      // 2. فحص الدوال غير المتزامنة المستدعاة بدون await أو return
       const asyncCallMatch = line.match(/(\w+)\s*\(\s*\)\s*;?\s*$/);
       if (asyncCallMatch && asyncCallMatch[1]) {
         const funcName = asyncCallMatch[1];
@@ -56,18 +52,20 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
         }
       }
 
-
+      // 3. فحص تعقيد الـ Callbacks (Callback Hell)
       const callbackDepth = (line.match(/\)/g) || []).length;
       if (callbackDepth >= 3 && (line.includes("callback") || /\bcb\b/.test(line))) {
         callbackHell.push(`${relativePath}:${lineNum}`);
         reports.push(`Potential callback hell: ${relativePath}:${lineNum} — consider async/await`);
       }
 
+      // 4. فحص الوعود العائمة (Floating Promises)
       if (line.match(/(?:fetch|axios|request|query)\s*\(/) && !line.includes("await") && !line.includes("return") && !line.includes("const") && !line.includes("let") && !line.includes("var")) {
         floatingPromises.push(`${relativePath}:${lineNum}`);
         reports.push(`Floating Promise: ${relativePath}:${lineNum} — Promise result is ignored`);
       }
 
+      // 5. فحص سلاسل الـ .then() التي تفتقد لـ .catch()
       if (line.includes(".then(") && !line.includes(".catch(")) {
         const nextLines = lines.slice(i, Math.min(i + 3, lines.length)).join(" ");
         if (!nextLines.includes(".catch(")) {
