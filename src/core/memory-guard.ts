@@ -1,7 +1,10 @@
-// src/core/memory-guard.ts
-// فحص استهلاك الذاكرة اللحظي للعملية الحالية (Node process) — مفيد كـ smoke
-// check أثناء تشغيل audit طويل، مش بديل عن أدوات profiling حقيقية.
-import v8 from "v8";
+/**
+ * @file memory-guard.ts
+ * @description فحص استهلاك الذاكرة اللحظي للعملية الحالية (Node process).
+ * يُستخدم كـ smoke check أثناء تشغيل عمليات الـ audit الطويلة لمراقبة الأداء
+ * والكشف المبكر عن أي ارتفاع غير طبيعي في الذاكرة.
+ */
+import v8 from "v8"; 
 import os from "os";
 
 export interface MemoryAuditResult {
@@ -24,7 +27,6 @@ const HEAP_RATIO_WARN = 0.85;
 export function performMemoryAudit(): MemoryAuditResult {
   const mem = process.memoryUsage();
   const heapStats = v8.getHeapStatistics();
-  // مأخوذة عشان لو حبينا مستقبلاً نقارن استهلاك العملية بالذاكرة الكلية للجهاز
   void os.totalmem();
 
   const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024);
