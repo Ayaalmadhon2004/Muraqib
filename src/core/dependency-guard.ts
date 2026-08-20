@@ -1,8 +1,13 @@
-// src/core/dependency-guard.ts
-// ملاحظة تاريخية: هاد الملف كان فيه بالغلط نسخة طبق الأصل من async-guard.ts
-// (نفس الدوال والاسم performAsyncAudit)، بينما محتواه الحقيقي (فحص الاعتماديات:
-// circular deps, outdated/duplicate packages, deprecated APIs) كان محطوط بالغلط
-// جوا rules/dead-code-guard.ts. رجّعنا كل محتوى لمكانه الصح.
+ /**### 🛡️ Config & Security Guard (`config-guard.ts`)
+
+The `config-guard` module is an automated auditing engine designed to inspect project configuration files and environment settings for security vulnerabilities, missing dependencies, and strict type-safety standards.
+
+#### Key Features:
+* **Required Files Audit:** Verifies the presence of essential project files (`tsconfig.json`, `package.json`, `.gitignore`).
+* **TypeScript Strictness Check:** Validates `tsconfig.json` configurations (checking for `strict`, `noImplicitAny`, and dead-code detection flags).
+* **Package & Secret Leakage Detection:** Scans `package.json` and `.env` files for exposed plaintext secrets (e.g., passwords, API keys, tokens).
+* **Git Security Enforcement:** Ensures `.env` files are properly included in `.gitignore` and are not actively tracked by git version control.
+*  */
 import fs from "fs";
 import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
@@ -34,10 +39,8 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const duplicatePackages: string[] = [];
   const deprecatedImports: string[] = [];
 
-  // استخدام السكانر المشترك لجلب الملفات بدلاً من globSync المباشر
   const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
 
-  // Build dependency graph
   const graph: Map<string, Set<string>> = new Map();
 
   for (const scannedFile of scannedFiles) {

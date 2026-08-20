@@ -25,7 +25,6 @@ const SECURITY_SENSITIVE_KEYS = [
   "credential",
 ];
 
-/** بيشيل تعليقات // و/* *\/ من نص JSONC بشكل آمن (بدون ما يلمس محتوى الـ strings) */
 function stripJsonComments(input: string): string {
   let result = "";
   let inString = false;
