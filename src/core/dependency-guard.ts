@@ -1,13 +1,13 @@
- /**### 🛡️ Config & Security Guard (`config-guard.ts`)
+/*
+### 🔍 Dependency & Architecture Auditor (`dependency-audit.ts`)
 
-The `config-guard` module is an automated auditing engine designed to inspect project configuration files and environment settings for security vulnerabilities, missing dependencies, and strict type-safety standards.
+An advanced auditing utility designed to analyze project source code dependencies, detect structural issues, and ensure code health by scanning TypeScript/JavaScript files.
 
 #### Key Features:
-* **Required Files Audit:** Verifies the presence of essential project files (`tsconfig.json`, `package.json`, `.gitignore`).
-* **TypeScript Strictness Check:** Validates `tsconfig.json` configurations (checking for `strict`, `noImplicitAny`, and dead-code detection flags).
-* **Package & Secret Leakage Detection:** Scans `package.json` and `.env` files for exposed plaintext secrets (e.g., passwords, API keys, tokens).
-* **Git Security Enforcement:** Ensures `.env` files are properly included in `.gitignore` and are not actively tracked by git version control.
-*  */
+* **Deprecated API Detection:** Scans codebase for obsolete or deprecated APIs (e.g., `url.parse`, `fs.exists`, `__dirname` in ESM) and suggests modern alternatives.
+* **Circular Dependency Detection:** Builds a file relationship graph and runs a Depth-First Search (DFS) algorithm to locate cyclic module imports.
+* **Version & Lockfile Inspection:** Analyzes `package.json` for potentially unstable `v0.x` packages and scans lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) for duplicate package versions.
+*/
 import fs from "fs";
 import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
