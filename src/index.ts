@@ -11,6 +11,12 @@ import { performDependencyAudit } from "./core/dependency-guard.js";
 import { performAsyncAudit } from "./core/async-guard.js";
 import { performConfigAudit } from "./core/config-guard.js";
 
+// ── NEW: previously dead code now wired in ──
+import { runPerformanceAudit } from "./core/performance/auditor.js";
+import { runOptimizerAudit } from "./core/performance/optimizer-engine.js";
+import { runRenderBlockingAudit } from "./core/performance/render-blocking.js";
+import { upgradePackages } from "./core/orchestrator.js";
+
 export { createEnv, createEnvWithPresets, loadEnv, safeCreateEnv } from "./env.js";
 export * from "./core/types.js";
 export * from "./core/standard.js";
@@ -18,13 +24,13 @@ export * from "./core/standard.js";
 // =========================================================================
 // Output helpers
 // =========================================================================
-const RESET = "[0m";
-const RED = "[31m";
-const GREEN = "[32m";
-const YELLOW = "[33m";
-const CYAN = "[36m";
-const DIM = "[2m";
-const BOLD = "[1m";
+const RESET = "\x1b[0m";
+const RED = "\x1b[31m";
+const GREEN = "\x1b[32m";
+const YELLOW = "\x1b[33m";
+const CYAN = "\x1b[36m";
+const DIM = "\x1b[2m";
+const BOLD = "\x1b[1m";
 
 function log(title: string, status: "pass" | "fail" | "warn", message?: string) {
   const icon = status === "pass" ? `${GREEN}[PASS]${RESET}` : status === "fail" ? `${RED}[FAIL]${RESET}` : `${YELLOW}[WARN]${RESET}`;
@@ -60,10 +66,14 @@ export interface AuditOptions {
   skipDependencies?: boolean;
   skipAsync?: boolean;
   skipConfig?: boolean;
+  skipPerformance?: boolean;      // NEW
+  skipOptimizer?: boolean;        // NEW
+  skipRenderBlocking?: boolean;   // NEW
   silent?: boolean;
   schedule?: string;
   presets?: string[];
   safe?: boolean;
+  upgrade?: boolean;              // NEW
 }
 
 export interface AuditResult {
@@ -77,6 +87,9 @@ export interface AuditResult {
   dependencies: { ok: boolean; errors: string[] };
   async: { ok: boolean; errors: string[] };
   config: { ok: boolean; errors: string[] };
+  performance: { ok: boolean; errors: string[] };    // NEW
+  optimizer: { ok: boolean; errors: string[] };      // NEW
+  renderBlocking: { ok: boolean; errors: string[] };  // NEW
 }
 
 export async function runAudit(options: AuditOptions = {}): Promise<AuditResult> {
@@ -105,6 +118,9 @@ ${CYAN}${BOLD}╔═════════════════════
     dependencies: { ok: true, errors: [] },
     async: { ok: true, errors: [] },
     config: { ok: true, errors: [] },
+    performance: { ok: true, errors: [] },    // NEW
+    optimizer: { ok: true, errors: [] },      // NEW
+    renderBlocking: { ok: true, errors: [] },// NEW
   };
 
   // ── Images ──
@@ -386,6 +402,88 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // NEW SECTIONS — previously dead code now wired into the audit pipeline
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── 11. Performance Cache Audit ──
+  if (!options.skipPerformance) {
+    section("1️⃣1️⃣  PERFORMANCE CACHE");
+    try {
+      const perf = runPerformanceAudit(targetPath);
+      if (typeof perf === "object" && perf !== null && "isOptimized" in perf && !perf.isOptimized) {
+        result.performance.ok = false;
+        result.performance.errors = perf.reports || ["Performance cache issues detected"];
+        log("Performance audit", "warn", `${result.performance.errors.length} issue(s)`);
+        for (const report of result.performance.errors) {
+          console.log(`    ${YELLOW}•${RESET} ${report}`);
+        }
+      } else {
+        log("Performance audit", "pass", "Cache performance optimal");
+      }
+    } catch (err: any) {
+      result.performance.ok = false;
+      result.performance.errors = [err.message];
+      log("Performance audit", "fail", err.message);
+    }
+  }
+
+  // ── 12. HTTP Optimizer (Cookies / Protocol) ──
+  if (!options.skipOptimizer) {
+    section("1️⃣2️⃣  HTTP OPTIMIZER");
+    try {
+      const opt = runOptimizerAudit(targetPath);
+      if (typeof opt === "object" && opt !== null && "isOptimized" in opt && !opt.isOptimized) {
+        result.optimizer.ok = false;
+        result.optimizer.errors = opt.reports || ["HTTP optimizer issues detected"];
+        log("Optimizer audit", "warn", `${result.optimizer.errors.length} issue(s)`);
+        for (const report of result.optimizer.errors) {
+          console.log(`    ${YELLOW}•${RESET} ${report}`);
+        }
+      } else {
+        log("Optimizer audit", "pass", "HTTP/cookie settings optimal");
+      }
+    } catch (err: any) {
+      result.optimizer.ok = false;
+      result.optimizer.errors = [err.message];
+      log("Optimizer audit", "fail", err.message);
+    }
+  }
+
+  // ── 13. Render Blocking Scripts ──
+  if (!options.skipRenderBlocking) {
+    section("1️⃣3️⃣  RENDER BLOCKING");
+    try {
+      const rb = runRenderBlockingAudit(targetPath);
+      if (typeof rb === "object" && rb !== null && "isOptimized" in rb && !rb.isOptimized) {
+        result.renderBlocking.ok = false;
+        result.renderBlocking.errors = rb.reports || ["Render blocking issues detected"];
+        log("Render blocking audit", "warn", `${result.renderBlocking.errors.length} issue(s)`);
+        for (const report of result.renderBlocking.errors) {
+          console.log(`    ${YELLOW}•${RESET} ${report}`);
+        }
+      } else {
+        log("Render blocking audit", "pass", "No render blocking scripts");
+      }
+    } catch (err: any) {
+      result.renderBlocking.ok = false;
+      result.renderBlocking.errors = [err.message];
+      log("Render blocking audit", "fail", err.message);
+    }
+  }
+
+  // ── 14. Package Upgrade (orchestrator) — mutates project, runs only with --upgrade ──
+  if (options.upgrade) {
+    section("🔄  PACKAGE UPGRADE");
+    try {
+      await upgradePackages(targetPath);
+      log("Package upgrade", "pass", "Packages upgraded with rollback support");
+    } catch (err: any) {
+      log("Package upgrade", "fail", err.message);
+      // Note: not added to AuditResult because it's an action, not a check
+    }
+  }
+
   // ── Summary ──
   section("📋 FINAL SUMMARY");
   const allOk =
@@ -398,7 +496,10 @@ ${CYAN}${BOLD}╔═════════════════════
     result.deadCode.ok &&
     result.dependencies.ok &&
     result.async.ok &&
-    result.config.ok;
+    result.config.ok &&
+    result.performance.ok &&
+    result.optimizer.ok &&
+    result.renderBlocking.ok;
 
   const rows = [
     ["Environment", result.env.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.env.errors.length],
@@ -411,6 +512,9 @@ ${CYAN}${BOLD}╔═════════════════════
     ["Dependencies", result.dependencies.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.dependencies.errors.length],
     ["Async", result.async.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.async.errors.length],
     ["Config", result.config.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.config.errors.length],
+    ["Performance", result.performance.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.performance.errors.length],
+    ["Optimizer", result.optimizer.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.optimizer.errors.length],
+    ["Render Block", result.renderBlocking.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.renderBlocking.errors.length],
   ];
 
   for (const [name, status, count] of rows) {
@@ -424,7 +528,14 @@ ${CYAN}${BOLD}╔═════════════════════
     box([`${GREEN}${BOLD}✅ All checks passed!${RESET}`, `${DIM}Your project is clean and optimized.${RESET}`]);
   } else {
     const criticalCount = result.env.errors.length + result.security.errors.length + result.config.errors.length;
-    const warningCount = result.memory.errors.length + result.deadCode.errors.length + result.dependencies.errors.length + result.async.errors.length;
+    const warningCount =
+      result.memory.errors.length +
+      result.deadCode.errors.length +
+      result.dependencies.errors.length +
+      result.async.errors.length +
+      result.performance.errors.length +
+      result.optimizer.errors.length +
+      result.renderBlocking.errors.length;
     box([
       `${RED}${BOLD}❌ Audit completed with failures.${RESET}`,
       `${DIM}Critical: ${criticalCount} | Warnings: ${warningCount}${RESET}`,
@@ -478,14 +589,31 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
     skipDependencies: args.includes("--skip-dependencies"),
     skipAsync: args.includes("--skip-async"),
     skipConfig: args.includes("--skip-config"),
+    skipPerformance: args.includes("--skip-performance"),      // NEW
+    skipOptimizer: args.includes("--skip-optimizer"),          // NEW
+    skipRenderBlocking: args.includes("--skip-render-blocking"),// NEW
     silent: args.includes("--silent"),
     schedule: getArg(args, "--schedule"),
     safe: args.includes("--safe"),
     presets: getArg(args, "--presets")?.split(","),
+    upgrade: args.includes("--upgrade"),                       // NEW
   };
 
   runAudit(opts).then((res) => {
-    const failed = !res.env.ok || !res.images.ok || !res.bundle.ok || !res.network.ok || !res.memory.ok || !res.security.ok || !res.deadCode.ok || !res.dependencies.ok || !res.async.ok || !res.config.ok;
+    const failed =
+      !res.env.ok ||
+      !res.images.ok ||
+      !res.bundle.ok ||
+      !res.network.ok ||
+      !res.memory.ok ||
+      !res.security.ok ||
+      !res.deadCode.ok ||
+      !res.dependencies.ok ||
+      !res.async.ok ||
+      !res.config.ok ||
+      !res.performance.ok ||
+      !res.optimizer.ok ||
+      !res.renderBlocking.ok;
     process.exit(failed ? 1 : 0);
   });
 }
