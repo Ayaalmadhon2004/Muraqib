@@ -13,7 +13,7 @@ import { performConfigAudit } from "./core/config-guard.js";
 
 // ── NEW: previously dead code now wired in ──
 import { runPerformanceAudit } from "./core/performance/auditor.js";
-import { runOptimizerAudit } from "./core/performance/optimizer-engine.js";
+import { auditPerformance } from "./core/performance/optimizer-engine.js";
 import { runRenderBlockingAudit } from "./core/performance/render-blocking.js";
 import { upgradePackages } from "./core/orchestrator.js";
 

@@ -10,7 +10,6 @@ import { isWithinSchedule } from "./utils/schedule-validator.js";
 // =========================================================================
 // 0.  إعدادات عامة وثوابت
 // =========================================================================
-const DEFAULT_ENV_FILES = [".env", ".env.local", ".env.development", ".env.production"];
 const SKIP_ENV_VALIDATION = process.env.SKIP_ENV_VALIDATION === "true" || process.env.SKIP_ENV_VALIDATION === "1";
 
 // =========================================================================
@@ -19,7 +18,7 @@ const SKIP_ENV_VALIDATION = process.env.SKIP_ENV_VALIDATION === "true" || proces
 export interface LoadEnvOptions {
   /** مسار المجلد اللي بدّك تدور فيه على .env (default: process.cwd()) */
   cwd?: string;
-  /** قائمة بأسماء ملفات .env بدّك تحمّلها بالترتيب (default: ['.env', '.env.local', '.env.${NODE_ENV}']) */
+  /** قائمة بأسماء ملفات .env بدّك تحمّلها بالترتيب (default: ['.env', '.env.${NODE_ENV}', '.env.local']) */
   files?: string[];
   /** إذا true، ما بتغيّر process.env (default: false) */
   preserveProcessEnv?: boolean;
@@ -30,18 +29,14 @@ export interface LoadEnvOptions {
 /**
  * 🌟 محمّل .env متقدم — يدعم:
  *   • inline comments:  KEY=value # هذا تعليق
- *   • multiline values:  KEY="line1\nline2"
+ *   • multiline values:  KEY="line1\nline2"  أو  KEY=line1\nline2
  *   • variable expansion: DATABASE_URL=$BASE_URL/db
  *   • quotes handling:   KEY='value' أو KEY="value"
  */
 export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
   const cwd = options.cwd ?? process.cwd();
   const nodeEnv = process.env.NODE_ENV ?? "development";
-  const files = options.files ?? [
-    ".env",
-    `.env.${nodeEnv}`,
-    ".env.local",
-  ];
+  const files = options.files ?? [".env", `.env.${nodeEnv}`, ".env.local"];
   const loaded: Record<string, string> = {};
 
   for (const file of files) {
@@ -51,8 +46,8 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
     try {
       const content = fs.readFileSync(filePath, "utf-8");
       const lines = content.split(/\r?\n/);
-      let currentKey: string | null = null;
-      let currentValue = "";
+      let pendingKey: string | null = null;
+      let pendingValue = "";
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -61,9 +56,16 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
         // تعليق كامل
         if (!trimmed || trimmed.startsWith("#")) continue;
 
-        // multiline value (مستمرة من السطر السابق)
-        if (currentKey !== null && (currentValue.endsWith("\\") || line.startsWith(" "))) {
-          currentValue += line.replace(/\\$/, "").trimStart();
+        // multiline continuation (ends with \)
+        if (pendingKey !== null) {
+          pendingValue += "\n" + line.replace(/\\$/, "").trimEnd();
+          if (!line.endsWith("\\")) {
+            loaded[pendingKey] = pendingValue;
+            if (options.verbose) {
+              console.log(`📄 [Muraqib Loader]: Loaded ${pendingKey} from ${file}`);
+            }
+            pendingKey = null;
+          }
           continue;
         }
 
@@ -80,29 +82,39 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
         const key = withoutExport.slice(0, eqIndex).trim();
         let rawValue = withoutExport.slice(eqIndex + 1).trim();
 
-        // quotes handling
-        const quoteMatch = rawValue.match(/^(['"])(.*)\1$/);
+        // quotes handling (supports newlines inside quotes via /s flag)
+        const quoteMatch = rawValue.match(/^(['"])(.*)\1$/s);
         if (quoteMatch) {
           rawValue = quoteMatch[2];
         }
 
-        currentKey = key;
-        currentValue = rawValue;
+        pendingKey = key;
+        pendingValue = rawValue;
 
-        // expansion: $VAR و ${VAR}
-        currentValue = expandVariables(currentValue, { ...process.env, ...loaded });
-
-        loaded[key] = currentValue;
-
-        if (options.verbose) {
-          console.log(`📄 [Muraqib Loader]: Loaded ${key} from ${file}`);
+        if (!line.endsWith("\\")) {
+          loaded[key] = rawValue;
+          if (options.verbose) {
+            console.log(`📄 [Muraqib Loader]: Loaded ${key} from ${file}`);
+          }
+          pendingKey = null;
         }
+      }
 
-        currentKey = null;
+      // handle last line if it was multiline and file ended
+      if (pendingKey !== null) {
+        loaded[pendingKey] = pendingValue;
+        if (options.verbose) {
+          console.log(`📄 [Muraqib Loader]: Loaded ${pendingKey} from ${file}`);
+        }
       }
     } catch (e) {
       console.warn(`⚠️ [Muraqib Loader]: Failed to load ${filePath}`);
     }
+  }
+
+  // expansion: $VAR و ${VAR} و ${VAR:-default} — نسويها بعد ما نخلص parse كل الملفات
+  for (const key of Object.keys(loaded)) {
+    loaded[key] = expandVariables(loaded[key], { ...process.env, ...loaded });
   }
 
   // merge into process.env
@@ -115,11 +127,20 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
   return loaded;
 }
 
-/** يلاقي أول # مش داخل quotes */
+/** يلاقي أول # مش داخل quotes (مع دعم escaped quotes) */
 function findCommentIndex(str: string): number {
   let inQuotes: string | null = null;
+  let escaped = false;
   for (let i = 0; i < str.length; i++) {
     const ch = str[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
     if (ch === '"' || ch === "'") {
       if (inQuotes === ch) inQuotes = null;
       else if (!inQuotes) inQuotes = ch;
@@ -130,10 +151,10 @@ function findCommentIndex(str: string): number {
   return -1;
 }
 
-/** يفكّ $VAR و ${VAR} */
+/** يفكّ $VAR و ${VAR} و ${VAR:-default} */
 function expandVariables(value: string, env: Record<string, string | undefined>): string {
-  return value.replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g, (_, name) => {
-    return env[name] ?? "";
+  return value.replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}?/g, (_, name, def) => {
+    return env[name] ?? def ?? "";
   });
 }
 
@@ -151,8 +172,10 @@ export type InferSchema<T extends GuardSchema> = {
 };
 
 export type IntersectExtension<T extends any[]> = T extends [infer Head, ...infer Tail]
-  ? (Head extends Record<string, any> ? Head : {}) & IntersectExtension<Tail>
-  : {};
+  ? Head extends Record<string, any>
+    ? Head & IntersectExtension<Tail>
+    : IntersectExtension<Tail>
+  : unknown;
 
 export type ErrorMessage<T extends string> = T & { __brand: "ErrorMessage" };
 
@@ -183,7 +206,6 @@ export interface CreateEnvOptions<
   isServer?: boolean;
   schedule?: string;
 
-  // ✅ جديد
   /** إذا true، ما بيفحصش الـ env (مفيد في CI/build) */
   skipValidation?: boolean;
   /** إذا true، بيخفي كل console logs */
@@ -206,8 +228,8 @@ export function createEnv<
   TExtends extends any[] = []
 >(
   opts: CreateEnvOptions<TPrefix, TServer, TClient, TExtends>
-): InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends> | null {
-  
+): (InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends>) | null {
+
   // ── load .env files ──
   if (opts.envFilePath) {
     const files = Array.isArray(opts.envFilePath) ? opts.envFilePath : [opts.envFilePath];
@@ -233,7 +255,7 @@ export function createEnv<
     return process.env as any;
   }
 
-  let rawSchemaFields: Record<string, any> = {
+  const rawSchemaFields: Record<string, any> = {
     ...opts.server,
     ...opts.client,
   };
@@ -281,7 +303,6 @@ export function createEnv<
       console.error(formattedMessage);
     }
 
-    // ✅ Error instance حقيقي (مش object عادي)
     const error = new Error(formattedMessage);
     (error as any).isMuraqibCustom = true;
     (error as any).errors = issues;
@@ -294,7 +315,7 @@ export function createEnv<
       isServer: opts.isServer ?? typeof window === "undefined",
       emptyStringAsUndefined: shouldSanitize,
     });
-    
+
     return (validatedGuard?.data ?? validatedGuard) as any;
   } catch (validationError: any) {
     throw validationError;
@@ -350,7 +371,7 @@ export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
     preserveProcessEnv?: boolean;
   }
 ): z.infer<z.ZodObject<T>> | null {
-  
+
   const serverSchema: Record<string, z.ZodTypeAny> = { ...userSchema };
 
   if (options.presets && Array.isArray(options.presets)) {
