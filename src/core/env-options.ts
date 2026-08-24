@@ -1,7 +1,10 @@
-// src/core/env-options.ts
-// خريطة بأسماء متغيرات البيئة الخاصة بـ Muraqib نفسه (مش متغيرات مشروع
-// المستخدم) — مين منها حساس (سر) ومين لأ. مستخدمة من core/config-guard.ts
-// عشان يتأكد إنه ما في متغير حساس من هاي منكشف بملفات .env بالمشروع.
+/**
+ * @file env-options.ts
+ * @description خريطة بأسماء متغيرات البيئة الخاصة بـ Muraqib نفسه (وليست متغيرات مشروع المستخدم).
+ * توضح هذه الخريطة أي من هذه المتغيرات يعتبر حسناً (سراً) وأيها غير حساس،
+ * وتُستخدم من قبل core/config-guard.ts للتحقق من عدم تسريب أي مفاتيح حساسة
+ * ضمن ملفات الـ .env الخاصة بمشروع المستخدم.
+ */
 export interface MuraqibOptionInfo {
   configName: string;
   type: "string" | "number" | "boolean";
@@ -20,10 +23,7 @@ const muraqibOptions: MuraqibOptionDefinition[] = [
   { name: "serverPort", type: "number", isSensitive: false },
 ];
 
-/**
- * بيحوّل اسم الخيار (camelCase) لاسم متغير بيئة (MURAQIB_SNAKE_CASE)
- * مثلاً: "dbUrl" → "MURAQIB_DB_URL"
- */
+
 function toEnvKey(optionName: string): string {
   return `MURAQIB_${optionName.replace(/([A-Z])/g, "_$1").toUpperCase()}`;
 }
@@ -42,7 +42,6 @@ export function getMuraqibEnvMap(): Record<string, MuraqibOptionInfo> {
   return map;
 }
 
-/** بيرجع بس أسماء متغيرات البيئة الحساسة (يلي المفروض ما تنكشف بأي ملف .env) */
 export function getSensitiveMuraqibEnvKeys(): string[] {
   return Object.entries(getMuraqibEnvMap())
     .filter(([, info]) => info.isSensitive)
