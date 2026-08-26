@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 // src/rules/bundle-budget.ts
 import fs from 'fs';
 import path from 'path';

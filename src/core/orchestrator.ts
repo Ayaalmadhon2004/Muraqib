@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 import { execSync } from 'child_process';
 import is from '@sindresorhus/is'; 
 import semver from 'semver';

@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 /**
  * DeadCodeAudit: أداة فحص ذكية لتحليل الكود الميت.
  * تعتمد على الـ file-scanner المشترك لضمان معمارية نظيفة وخالية من التكرار.

@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 /*
 ### 🔍 Dependency & Architecture Auditor (`dependency-audit.ts`)
 

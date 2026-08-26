@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 import fs from "fs";
 import path from "path";
 import { z } from "zod";

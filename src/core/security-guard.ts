@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 import https from "https";
 import http from "http";
 import { URL } from "url";

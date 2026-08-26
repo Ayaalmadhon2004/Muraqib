@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 /**
  * @file memory-guard.ts
  * @description فحص استهلاك الذاكرة اللحظي للعملية الحالية (Node process).

@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 import * as bcrypt from 'bcryptjs';
 import { RegisterInput } from '../models/register-input.model.js';
 import { UserRepository } from '../repositories/user.repository.js';

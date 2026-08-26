@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 /**
  * AsyncAudit: أداة فحص ذكية لمراقبة العمليات غير المتزامنة (Asynchronous Operations).
  * تعتمد على الـ file-scanner المشترك لضمان معمارية نظيفة وخالية من التكرار.

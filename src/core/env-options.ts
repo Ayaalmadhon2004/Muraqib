@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 /**
  * @file env-options.ts
  * @description خريطة بأسماء متغيرات البيئة الخاصة بـ Muraqib نفسه (وليست متغيرات مشروع المستخدم).

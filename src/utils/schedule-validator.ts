@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 // @ts-ignore
 // 👆 قمنا بتعطيل فحص الأنواع لهذا السطر فقط لأن الحزمة مكسورة داخلياً، مع الحفاظ على الـ import المتوافق مع Node.js 22
 import cronParser from 'cron-parser';

@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 // muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const analyzeRenderBlocking = (htmlContent: string) => {
   const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
