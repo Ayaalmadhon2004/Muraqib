@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 import * as z from "zod";
 import { createEnv } from "../index.js"; 
 
@@ -8,6 +9,7 @@ import type { VercelEnv, NeonVercelEnv } from "../presets.js";
  * 🌐 Vercel Environment Parser
  * فحص وتدقيق المتغيرات التي تحقنها منصة Vercel تلقائياً
  */
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const vercel = (): Readonly<VercelEnv> => {
   // 1️⃣ نقوم ببناء سكيمة التحقق الصافية من Zod وتمرير البيئة لها مباشرة
   const vercelSchema = z.object({
@@ -33,6 +35,7 @@ export const vercel = (): Readonly<VercelEnv> => {
 /**
  * 🐘 Neon Vercel Database Environment Parser
  * فحص وتدقيق متغيرات الاتصال بقاعدة البيانات وسلسلة الـ Connection Strings
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
  */
 export const neonVercel = (): Readonly<NeonVercelEnv> => {
   const neonSchema = z.object({

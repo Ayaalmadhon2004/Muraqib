@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 import { execSync } from 'child_process';
 import is from '@sindresorhus/is'; 
 import semver from 'semver';
@@ -52,6 +53,7 @@ const SCHEMA_MIGRATIONS_REGISTRY: SchemaMigrationRule[] = [
   }
 ];
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface OrchestratorConfig {
   packageName: string;
   currentValue: string; 

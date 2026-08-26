@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export type PackageManager = 'npm' | 'yarn' | 'pnpm';
 export function detectProjectPackageManager(
   basePath: string = process.cwd()

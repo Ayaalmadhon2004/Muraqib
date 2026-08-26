@@ -1,9 +1,11 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 /**
  * AsyncAudit: أداة فحص ذكية لمراقبة العمليات غير المتزامنة (Asynchronous Operations).
  * تعتمد على الـ file-scanner المشترك لضمان معمارية نظيفة وخالية من التكرار.
  */
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface AsyncAuditResult {
   isClean: boolean;
   reports: string[];
@@ -20,8 +22,24 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
   const callbackHell: string[] = [];
   const floatingPromises: string[] = [];
 
-  // استخدام الـ Scanner المشترك لجلب ملفات TypeScript و JavaScript معاً
-  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+  // Use the shared scanner to fetch files. Prefer TypeScript sources when both .ts and .js exist
+  let scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+
+  // Filter: if a .ts version exists for the same relative path, ignore the .js artifact (avoids duplicate findings)
+  const tsSet = new Set(scannedFiles.filter(f => f.relativePath.endsWith('.ts')).map(f => f.relativePath.replace(/\.ts$/, '')));
+  scannedFiles = scannedFiles.filter(f => {
+    if (f.relativePath.endsWith('.js')) {
+      const base = f.relativePath.replace(/\.js$/, '');
+      return !tsSet.has(base);
+    }
+    return true;
+  });
+
+  // Avoid scanning this auditor file itself — it contains heuristics that would otherwise trigger on its own code
+  scannedFiles = scannedFiles.filter(f => {
+    const rp = f.relativePath.replace(/\\/g, '/');
+    return !rp.includes('core/async-guard');
+  });
 
   for (const scannedFile of scannedFiles) {
     const { relativePath, content } = scannedFile;

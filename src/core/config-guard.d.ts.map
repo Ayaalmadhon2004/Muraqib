@@ -1,0 +1,1 @@
+{"version":3,"file":"config-guard.d.ts","sourceRoot":"","sources":["config-guard.ts"],"names":[],"mappings":"AAgBA,MAAM,WAAW,iBAAiB;IAChC,OAAO,EAAE,OAAO,CAAC;IACjB,OAAO,EAAE,MAAM,EAAE,CAAC;IAClB,YAAY,EAAE,MAAM,EAAE,CAAC;IACvB,cAAc,EAAE,MAAM,EAAE,CAAC;IACzB,eAAe,EAAE,MAAM,EAAE,CAAC;CAC3B;AAoED,wBAAgB,kBAAkB,CAAC,UAAU,EAAE,MAAM,GAAG,iBAAiB,CA+IxE"}

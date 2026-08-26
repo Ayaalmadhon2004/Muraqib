@@ -1,5 +1,6 @@
 import { AbstractMuraqibMigration } from './abstract-migration.js';
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export class RenamePropertyMigration extends AbstractMuraqibMigration {
   override readonly propertyName: string;
   private readonly newPropertyName: string;

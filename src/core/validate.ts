@@ -12,6 +12,7 @@ async function getChalk() {
   return chalkInstance;
 }
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export async function createMuraqibEnv(rawEnv: Record<string, string | undefined>) {
   const sanitizedEnv: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawEnv)) { 

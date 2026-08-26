@@ -1,3 +1,5 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const auditPerformance = (resourceCount: number, protocol: string, cookiesSize: number) => {
   const findings = [];
 

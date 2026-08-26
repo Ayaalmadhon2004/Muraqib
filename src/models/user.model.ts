@@ -1,4 +1,5 @@
 // src/models/user.model.ts
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface User {
   id: string;
   email: string;

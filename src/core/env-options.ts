@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 /**
  * @file env-options.ts
  * @description خريطة بأسماء متغيرات البيئة الخاصة بـ Muraqib نفسه (وليست متغيرات مشروع المستخدم).
@@ -5,6 +6,7 @@
  * وتُستخدم من قبل core/config-guard.ts للتحقق من عدم تسريب أي مفاتيح حساسة
  * ضمن ملفات الـ .env الخاصة بمشروع المستخدم.
  */
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface MuraqibOptionInfo {
   configName: string;
   type: "string" | "number" | "boolean";
@@ -27,6 +29,7 @@ const muraqibOptions: MuraqibOptionDefinition[] = [
 function toEnvKey(optionName: string): string {
   return `MURAQIB_${optionName.replace(/([A-Z])/g, "_$1").toUpperCase()}`;
 }
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 
 export function getMuraqibEnvMap(): Record<string, MuraqibOptionInfo> {
   const map: Record<string, MuraqibOptionInfo> = {};

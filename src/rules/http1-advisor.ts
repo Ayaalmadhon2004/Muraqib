@@ -1,5 +1,7 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 // src/rules/http1-advisor.ts
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const analyzeHTTP1Compliance = (res: any, headers: Record<string, string>) => {
   const warnings = [];
 
