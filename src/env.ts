@@ -85,7 +85,7 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
         // quotes handling (supports newlines inside quotes via /s flag)
         const quoteMatch = rawValue.match(/^(['"])(.*)\1$/s);
         if (quoteMatch) {
-          rawValue = quoteMatch[2];
+          rawValue = quoteMatch[2] ?? rawValue;
         }
 
         pendingKey = key;
@@ -238,7 +238,7 @@ export function createEnv<
   // ── load .env files ──
   if (opts.envFilePath) {
     const files = Array.isArray(opts.envFilePath) ? opts.envFilePath : [opts.envFilePath];
-    loadEnv({ files, preserveProcessEnv: opts.preserveProcessEnv, verbose: !opts.silent });
+    loadEnv({ files, preserveProcessEnv: opts.preserveProcessEnv ?? false, verbose: !opts.silent });
   }
 
   // ── schedule check ──
