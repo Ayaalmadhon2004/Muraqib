@@ -20,7 +20,16 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
   const unusedExports: string[] = [];
 
   // استخدام الـ Scanner المشترك لجلب الملفات ومحتواها
-  const scannedFiles = scanProjectFiles(targetPath, ["ts"]);
+  let scannedFiles = scanProjectFiles(targetPath, ["ts"]);
+
+  // Exclude generated declaration files and specs to reduce false positives
+  scannedFiles = scannedFiles.filter(f => {
+    const rp = f.relativePath.replace(/\\/g, '/');
+    if (rp.endsWith('.d.ts')) return false;
+    if (rp.includes('.spec.')) return false;
+    if (rp.includes('.d.ts.map')) return false;
+    return true;
+  });
 
   const fileContents = new Map<string, string>();
   for (const scannedFile of scannedFiles) {
