@@ -124,6 +124,11 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
     }
   }
 
+  // Provide safe development defaults when env vars are missing so audits and local servers run
+  process.env.PORT = process.env.PORT || "3000";
+  process.env.STATIC_ASSETS_CACHE_MAX_AGE = process.env.STATIC_ASSETS_CACHE_MAX_AGE || "86400";
+  process.env.ENABLE_SERVER_COMPRESSION = process.env.ENABLE_SERVER_COMPRESSION || "true";
+
   return loaded;
 }
 
