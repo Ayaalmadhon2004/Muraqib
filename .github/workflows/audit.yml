@@ -1,0 +1,52 @@
+name: Audit
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start local audit target
+        run: npx tsx src/server.ts > server.log 2>&1 &
+
+      - name: Wait for local server to come up
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000 >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Local audit target did not start in time." >&2
+          cat server.log || true
+          exit 1
+
+      - name: Run audit and save report
+        run: npm run audit:ci
+
+      - name: Upload audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-report
+          path: audit-report.json
+          if-no-files-found: error
+          retention-days: 7

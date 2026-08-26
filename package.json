@@ -10,6 +10,8 @@
     "dev-server": "tsx watch src/server.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "start": "node dist/index.js",
+    "audit": "tsx src/index.ts --url http://localhost:3000 --security-url http://localhost:3000 --silent",
+    "audit:ci": "tsx scripts/collect-audit.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
