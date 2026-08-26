@@ -127,14 +127,11 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const packageJsonPath = path.join(targetPath, "package.json");
   if (fs.existsSync(packageJsonPath)) {
     const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-    const allDeps: Record<string, string> = {
-      ...pkg.dependencies,
-      ...pkg.devDependencies,
-    };
-
-    const depNames = Object.keys(allDeps);
+    // Only consider production dependencies for outdated-package warnings
+    const prodDeps: Record<string, string> = pkg.dependencies || {};
+    const depNames = Object.keys(prodDeps);
     for (const dep of depNames) {
-      const version = allDeps[dep];
+      const version = prodDeps[dep];
       if (version && version.startsWith("^0.")) {
         outdatedPackages.push(`${dep}@${version} — v0.x may have breaking changes`);
         reports.push(`Potentially outdated: ${dep}@${version} (v0.x detected)`);

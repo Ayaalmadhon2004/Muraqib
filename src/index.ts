@@ -92,9 +92,11 @@ function runOptimizerAudit(targetPath: string) {
     resourceCount = countResources(targetPath);
   } catch { /* ignore */ }
 
-  // Detect protocol hint from HTML or default to HTTP/2
+  // Detect protocol hint from HTML or default to HTTP/2 for local development
   const protocol =
-    /http\/2|h2|HTTP\/2/i.test(htmlContent) ? "HTTP/2" : "HTTP/1.1";
+    /http\/2|h2|HTTP\/2/i.test(htmlContent)
+      ? "HTTP/2"
+      : (process.env.NODE_ENV !== "production" ? "HTTP/2" : "HTTP/1.1");
 
   // Naive cookie-size heuristic
   const cookiesSize = /cookie|Set-Cookie/i.test(htmlContent) ? 3 * 1024 : 512;
