@@ -33,6 +33,12 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
     return true;
   });
 
+  // Avoid scanning this auditor file itself — it contains heuristics that would otherwise trigger on its own code
+  scannedFiles = scannedFiles.filter(f => {
+    const rp = f.relativePath.replace(/\\/g, '/');
+    return !rp.includes('core/async-guard');
+  });
+
   for (const scannedFile of scannedFiles) {
     const { relativePath, content } = scannedFile;
     const lines = content.split("\n");
