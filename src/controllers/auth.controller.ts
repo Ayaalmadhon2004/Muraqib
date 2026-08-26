@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express"; 
+import type { Request, Response, NextFunction } from "express"; 
 import { AuthService } from "../services/auth.service.js";
 import { registerInputSchema } from "../models/register-input.model.js";
 

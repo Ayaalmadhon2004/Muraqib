@@ -1,5 +1,5 @@
 // src/middlewares/performance.middleware.ts
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 
 export const performanceMonitor = (req: Request, res: Response, next: NextFunction) => {
   const start = process.hrtime();
