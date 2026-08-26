@@ -7,9 +7,9 @@ export const performLiveLatencyAudit = async (url: string) => {
         const response = await axios.get(url); 
         const endTime = Date.now();
         const requestTimeMs = endTime - startTime; 
-        const contentLength = response.headers['content-length'];
-        const payloadSizeKb = contentLength 
-            ? parseInt(contentLength) / 1024 
+        const contentLength = response.headers['content-length'] as string | undefined;
+        const payloadSizeKb = contentLength && typeof contentLength === 'string'
+            ? parseInt(contentLength, 10) / 1024
             : Buffer.byteLength(JSON.stringify(response.data)) / 1024;
         const auditResult = analyzeLatency(requestTimeMs, payloadSizeKb);
 

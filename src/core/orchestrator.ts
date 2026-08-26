@@ -92,7 +92,7 @@ export async function runMuraqibUpgradeOrchestrator({
     pnpm: { type: 'pnpm', commands: { lockFile: 'pnpm-lock.yaml', build: 'pnpm -w build' } },
   };
 
-  const envMeta = (managerMeta[currentEnv as string] ?? managerMeta['npm']);
+  const envMeta = (managerMeta[currentEnv as string] ?? managerMeta['npm']!);
   console.log(`🔍 [Muraqib Environment]: Active Package Manager detected: [${envMeta.type.toUpperCase()}] via "${envMeta.commands.lockFile}"`);
 
   let activePresets: PackageGroup[] = MURAQIB_LOCAL_PRESETS;
