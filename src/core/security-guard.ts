@@ -26,9 +26,12 @@ const RECOMMENDED_HEADERS = [
 export async function performSecurityAudit(targetUrl: string): Promise<SecurityAuditResult> {
   const reports: string[] = [];
   const url = new URL(targetUrl);
+  const hostname = url.hostname;
+  const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(hostname);
   const isHttps = url.protocol === "https:";
 
-  if (!isHttps) {
+  // For remote hosts, warn if connection is not HTTPS. For localhost (dev) allow HTTP.
+  if (!isLocalHost && !isHttps) {
     reports.push("Connection is not HTTPS — data transmitted in plaintext");
   }
 
