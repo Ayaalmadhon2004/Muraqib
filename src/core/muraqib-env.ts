@@ -6,7 +6,7 @@ export interface NewEnvConfig {
   currentValue: string;          // القيمة القديمة من ملف الـ .env الحالي
   newValue: string;              // القيمة الجديدة المراد تحديثها
   updateStrategy: EnvUpdateStrategy; // الاستراتيجية المختارة للتحديث
-  secretKey: string;             // اسم المتغير (مثال: DATABASE_URL)
+  secretKey?: string;             // اسم المتغير (مثال: DATABASE_URL)
 }
 
 /**
@@ -16,7 +16,7 @@ export function getNewEnvValue({
   currentValue,
   newValue,
   updateStrategy,
-  secretKey,
+  secretKey: _secretKey,
 }: NewEnvConfig): string | null {
   
   // 1️⃣ تطهير المدخلات (Sanitization) من الفراغات وعلامات التنصيص الزائدة

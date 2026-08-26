@@ -7,14 +7,14 @@ export interface MuraqibVersionConfig {
   currentVersion: string;         
   newVersion: string;             
   updateStrategy: VersionUpdateStrategy;
-  packageName: string;     
+  packageName?: string;     
 }
 
 export function getMuraqibNewVersionValue({
   currentVersion,
   newVersion,
   updateStrategy,
-  packageName,
+  packageName: _packageName,
 }: MuraqibVersionConfig): string | null {
   
   if (!is.string(currentVersion) || !is.string(newVersion)) { 

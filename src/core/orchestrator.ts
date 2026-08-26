@@ -84,8 +84,16 @@ export async function runMuraqibUpgradeOrchestrator({
     console.warn(`⚠️  [Muraqib Guard]: Skipping package "${packageName}". Reason: [invalid-version syntax]`);
     return { updatedVersion: null, schemaMigrated: false, skipReason: 'invalid-version' };
   }
-  const currentEnv = detectProjectPackageManager(); 
-  console.log(`🔍 [Muraqib Environment]: Active Package Manager detected: [${currentEnv.type.toUpperCase()}] via "${currentEnv.commands.lockFile}"`);
+  const currentEnv = detectProjectPackageManager();
+  // Map the simple package manager id to a small command/metadata object
+  const managerMeta: Record<string, { type: string; commands: { lockFile: string; build: string } }> = {
+    npm: { type: 'npm', commands: { lockFile: 'package-lock.json', build: 'npm run build' } },
+    yarn: { type: 'yarn', commands: { lockFile: 'yarn.lock', build: 'yarn build' } },
+    pnpm: { type: 'pnpm', commands: { lockFile: 'pnpm-lock.yaml', build: 'pnpm -w build' } },
+  };
+
+  const envMeta = managerMeta[currentEnv] || managerMeta['npm'];
+  console.log(`🔍 [Muraqib Environment]: Active Package Manager detected: [${envMeta.type.toUpperCase()}] via "${envMeta.commands.lockFile}"`);
 
   let activePresets: PackageGroup[] = MURAQIB_LOCAL_PRESETS;
  

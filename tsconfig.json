@@ -44,6 +44,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["node_modules", "dist", "public", "scripts", "src/app"]
+  "exclude": ["node_modules", "dist", "public", "scripts", "src/app", "**/*.spec.ts", "**/*.test.ts", "src/**/*.spec.ts"]
 }
 
