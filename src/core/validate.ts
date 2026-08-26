@@ -1,6 +1,3 @@
-import { z } from 'zod';
-import { logger } from '../utils/logger.ts'; 
-
 let chalkInstance: any = undefined;
 
 async function getChalk() {

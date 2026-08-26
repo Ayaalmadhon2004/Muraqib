@@ -1,6 +1,11 @@
 export const auditPerformance = (resourceCount: number, protocol: string, cookiesSize: number) => {
   const findings = [];
 
+  // Use resourceCount to provide more precise recommendations
+  if (typeof resourceCount === 'number' && resourceCount > 50) {
+    findings.push('Note: The page loads more than 50 resources which may indicate heavy bundling or many network requests.');
+  }
+
   if (cookiesSize > 2 * 1024) { 
     findings.push("تحذير: حجم الكوكيز يتجاوز 2KB. كل طلب سيتم تحميله ببيانات غير ضرورية.");
   }
