@@ -50,7 +50,7 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
       let pendingValue = "";
 
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+        const line = lines[i]!;
         const trimmed = line.trim();
 
         // تعليق كامل
@@ -114,7 +114,7 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
 
   // expansion: $VAR و ${VAR} و ${VAR:-default} — نسويها بعد ما نخلص parse كل الملفات
   for (const key of Object.keys(loaded)) {
-    loaded[key] = expandVariables(loaded[key], { ...process.env, ...loaded });
+    loaded[key] = expandVariables(loaded[key]!, { ...process.env, ...loaded });
   }
 
   // merge into process.env
