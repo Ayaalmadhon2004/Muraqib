@@ -33,9 +33,11 @@ app.use(express.static(publicDir, { maxAge: cacheSeconds * 1000 }));
 app.get("/", (req, res) => {
   const indexPath = path.join(publicDir, "index.html");
   if (fs.existsSync(indexPath)) {
-    return res.sendFile(indexPath);
+    res.sendFile(indexPath);
+    return;
   }
-  return res.json({ status: "ok", message: "Muraqib server running" });
+
+  res.json({ status: "ok", message: "Muraqib server running" });
 });
 
 const port = Number(process.env.PORT) || 3000;
