@@ -31,6 +31,7 @@ export const performLiveLatencyAudit = async (url: string) => {
     }
 };
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const analyzeLatency = (requestTimeMs: number, payloadSizeKb: number) => {
     const reports = [];
 

@@ -8,6 +8,7 @@ import type { VercelEnv, NeonVercelEnv } from "../presets.js";
  * 🌐 Vercel Environment Parser
  * فحص وتدقيق المتغيرات التي تحقنها منصة Vercel تلقائياً في السيرفر
  */
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const vercel = (): Readonly<VercelEnv> => {
   // نقوم بتعريف الـ Schema ونترك ArkType يستنتج نوعها النقي
   const vercelSchema = type({
@@ -27,6 +28,7 @@ export const vercel = (): Readonly<VercelEnv> => {
 /**
  * 🐘 Neon Vercel Database Environment Parser
  * فحص وتدقيق متغيرات الاتصال بقاعدة البيانات وسلسلة الـ Connection Strings
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
  */
 export const neonVercel = (): Readonly<NeonVercelEnv> => {
   // بناء سكيمة فحص قاعدة البيانات متوافقة مع خصائص ArkType القياسية

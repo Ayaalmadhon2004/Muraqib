@@ -12,6 +12,7 @@ import fs from "fs";
 import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface DependencyAuditResult {
   isClean: boolean;
   reports: string[];

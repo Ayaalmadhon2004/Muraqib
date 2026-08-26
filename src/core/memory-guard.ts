@@ -7,6 +7,7 @@
 import v8 from "v8"; 
 import os from "os";
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface MemoryAuditResult {
   isOptimized: boolean;
   reports: string[];

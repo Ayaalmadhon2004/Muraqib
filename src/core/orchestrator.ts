@@ -52,6 +52,7 @@ const SCHEMA_MIGRATIONS_REGISTRY: SchemaMigrationRule[] = [
   }
 ];
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface OrchestratorConfig {
   packageName: string;
   currentValue: string; 

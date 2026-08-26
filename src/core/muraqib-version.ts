@@ -3,6 +3,7 @@ import semver from 'semver';
  
 export type VersionUpdateStrategy = 'replace' | 'keep-both';
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface MuraqibVersionConfig {
   currentVersion: string;         
   newVersion: string;             

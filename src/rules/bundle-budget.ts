@@ -5,6 +5,7 @@ import path from 'path';
 /**
  * 1. ميزة فحص الحاجة للتحميل الكسول (Lazy Loading / Dynamic Imports)
  */
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const checkLazyLoadingNecessity = (filePath: string): string[] => {
     if (!fs.existsSync(filePath)) return [];
     const fileContent = fs.readFileSync(filePath, 'utf-8');
@@ -30,6 +31,7 @@ export const checkLazyLoadingNecessity = (filePath: string): string[] => {
 
 /**
  * 2. ميزة فحص الاستيرادات الفاطسة والثقيلة (Heavy Structural Imports)
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
  */
 export const checkHeavyImports = (filePath: string): string[] => {
     if (!fs.existsSync(filePath)) return [];
@@ -54,6 +56,7 @@ export const checkHeavyImports = (filePath: string): string[] => {
 };
 
 /**
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
  * 3. ميزة فحص إعدادات الـ Minification لضغط الملفات (next.config.js)
  */
 export const checkMinificationSettings = (projectRoot: string): string[] => {

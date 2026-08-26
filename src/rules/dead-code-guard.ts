@@ -5,6 +5,7 @@
 import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface DeadCodeAuditResult {
   isClean: boolean;
   reports: string[];

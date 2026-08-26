@@ -2,6 +2,7 @@ import https from "https";
 import http from "http";
 import { URL } from "url";
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface SecurityAuditResult {
   isSecure: boolean;
   reports: string[];

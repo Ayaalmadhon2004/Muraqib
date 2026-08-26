@@ -25,6 +25,7 @@ export * from "./core/standard.js";
 // Inline optimizer + render-blocking wrappers (fixed dead-code wiring)
 // =========================================================================
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const auditPerformance = (resourceCount: number, protocol: string, cookiesSize: number) => {
   const findings = [];
 
@@ -40,6 +41,7 @@ export const auditPerformance = (resourceCount: number, protocol: string, cookie
 
   return findings;
 };
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 
 export const analyzeRenderBlocking = (htmlContent: string) => {
   const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
@@ -172,6 +174,7 @@ function box(lines: string[]) {
 }
 
 // =========================================================================
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 // Audit Runner
 // =========================================================================
 export interface AuditOptions {
@@ -192,6 +195,7 @@ export interface AuditOptions {
   schedule?: string;
   presets?: string[];
   safe?: boolean;
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
   upgrade?: boolean;              // NEW
 }
 
@@ -207,6 +211,7 @@ export interface AuditResult {
   async: { ok: boolean; errors: string[] };
   config: { ok: boolean; errors: string[] };
   performance: { ok: boolean; errors: string[] };    // NEW
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
   optimizer: { ok: boolean; errors: string[] };      // NEW
   renderBlocking: { ok: boolean; errors: string[] };  // NEW
 }

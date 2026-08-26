@@ -1,0 +1,1 @@
+{"version":3,"file":"http-exception.model.js","sourceRoot":"","sources":["http-exception.model.ts"],"names":[],"mappings":"AAAA,qCAAqC;AACrC,MAAM,CAAC,OAAO,OAAO,aAAc,SAAQ,KAAK;IAC9C,MAAM,CAAS;IACf,MAAM,CAAM;IAEZ,YAAY,MAAc,EAAE,MAAW;QACrC,KAAK,EAAE,CAAC;QACR,IAAI,CAAC,MAAM,GAAG,MAAM,CAAC;QACrB,IAAI,CAAC,MAAM,GAAG,MAAM,CAAC;IACvB,CAAC;CACF"}

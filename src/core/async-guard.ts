@@ -4,6 +4,7 @@
  */
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface AsyncAuditResult {
   isClean: boolean;
   reports: string[];

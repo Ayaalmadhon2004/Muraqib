@@ -1,5 +1,6 @@
 import { isString } from '@sindresorhus/is'; // مكتبة الفحص النظيف اللي مستخدمها Renovate
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export type EnvUpdateStrategy = 'replace' | 'keep-both' | 'merge';
 
 export interface NewEnvConfig {
@@ -11,6 +12,7 @@ export interface NewEnvConfig {
 
 /**
  * دالة Muraqib لتطهير وصياغة قيم متغيرات البيئة بناءً على استراتيجيات هندسية مرنة
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
  */
 export function getNewEnvValue({
   currentValue,

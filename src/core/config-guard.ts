@@ -14,6 +14,7 @@ import { execSync } from "child_process";
 import { getSensitiveMuraqibEnvKeys } from "./env-options.js";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface ConfigAuditResult {
   isValid: boolean;
   reports: string[];

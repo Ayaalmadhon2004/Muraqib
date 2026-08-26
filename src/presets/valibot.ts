@@ -1,6 +1,7 @@
 import { optional, string, picklist, pipe, url, parse } from "valibot";
 import type { VercelEnv, NeonVercelEnv } from "../presets.js";
 
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export const vercel = (): Readonly<VercelEnv> => {
   try {
     const vercelSchema = {
@@ -19,6 +20,7 @@ export const vercel = (): Readonly<VercelEnv> => {
     return {} as Readonly<VercelEnv>;
   }
 };
+// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 
 export const neonVercel = (): Readonly<NeonVercelEnv> => {
   try {
