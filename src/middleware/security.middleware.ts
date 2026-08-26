@@ -2,10 +2,13 @@ import type { Express } from "express";
 import helmet from "helmet";
 
 export function applySecurityMiddleware(app: Express) {
-  // Use helmet defaults, enable several useful protections
+  // Use helmet with explicit HSTS maxAge to meet strict audit recommendations
   app.use(
     helmet({
       contentSecurityPolicy: false, // leave CSP opt-in because apps differ widely
+      hsts: {
+        maxAge: 31536000,
+      },
     })
   );
 

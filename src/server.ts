@@ -31,11 +31,11 @@ app.use(express.static(publicDir, { maxAge: cacheSeconds * 1000 }));
 // Basic health route
 app.get("/", (req, res) => {
   const indexPath = path.join(publicDir, "index.html");
-  try {
-    res.sendFile(indexPath);
-  } catch (err) {
-    res.json({ status: "ok", message: "Muraqib server running" });
+  const fs = require("fs");
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
   }
+  return res.json({ status: "ok", message: "Muraqib server running" });
 });
 
 const port = Number(process.env.PORT) || 3000;
