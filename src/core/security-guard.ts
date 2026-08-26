@@ -102,7 +102,8 @@ export async function performSecurityAudit(targetUrl: string): Promise<SecurityA
           score = Math.max(score, 50);
         }
 
-        const isSecure = isLocalHost ? (reports.length === 0 && isHttps) : true;
+        // For local development (localhost/127.0.0.1/::1), allow HTTP but require headers to be present.
+        const isSecure = isLocalHost ? (reports.length === 0) : true;
 
         resolve({
           isSecure,
