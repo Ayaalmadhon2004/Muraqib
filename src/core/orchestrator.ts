@@ -92,7 +92,7 @@ export async function runMuraqibUpgradeOrchestrator({
     pnpm: { type: 'pnpm', commands: { lockFile: 'pnpm-lock.yaml', build: 'pnpm -w build' } },
   };
 
-  const envMeta = managerMeta[currentEnv] || managerMeta['npm'];
+  const envMeta = (managerMeta[currentEnv as string] ?? managerMeta['npm']);
   console.log(`🔍 [Muraqib Environment]: Active Package Manager detected: [${envMeta.type.toUpperCase()}] via "${envMeta.commands.lockFile}"`);
 
   let activePresets: PackageGroup[] = MURAQIB_LOCAL_PRESETS;
@@ -144,12 +144,12 @@ export async function runMuraqibUpgradeOrchestrator({
       console.log(`ℹ️  [Info]: No core schema modifications required for ${packageName} v${targetMajor}.`);
     }
 
-    const targetBuildCommand = currentEnv.commands.build; 
+    const targetBuildCommand = envMeta.commands.build;
     console.log(`🧪 [Integrity]: Testing project build after upgrade using: "${targetBuildCommand}"...`);
     
     try {
       execSync(targetBuildCommand, { stdio: 'ignore' }); 
-      console.log(`💎 [Integrity Success]: Project build passed smoothly on [${currentEnv.type.toUpperCase()}] environment! Safe to commit.`);
+      console.log(`💎 [Integrity Success]: Project build passed smoothly on [${envMeta.type.toUpperCase()}] environment! Safe to commit.`);
     } catch (buildError) {
       console.error(`💥 [Integrity Failure]: Project build failed after updating ${packageName}!`);
       console.log(`🔄 [Auto-Recovery]: Initiating emergency rollback via Git to protect project stability...`);
