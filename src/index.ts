@@ -211,7 +211,9 @@ export interface AuditResult {
 
 export async function runAudit(options: AuditOptions = {}): Promise<AuditResult> {
   const targetPath = options.targetPath || process.cwd();
-  const latencyUrl = options.latencyUrl || "https://jsonplaceholder.typicode.com/comments";
+  const defaultLocal = "http://localhost:3000";
+  const isLocalDev = process.env.NODE_ENV !== "production";
+  const latencyUrl = options.latencyUrl || (isLocalDev ? `${defaultLocal}` : "https://jsonplaceholder.typicode.com/comments");
   const securityUrl = options.securityUrl || latencyUrl;
   const silent = options.silent || false;
 
