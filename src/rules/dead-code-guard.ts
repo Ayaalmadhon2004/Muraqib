@@ -88,6 +88,14 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
       }
 
       if (!usedElsewhere) {
+        // Check for an explicit opt-out comment near the export to avoid false positives
+        const contextStart = Math.max(0, match.index - 200);
+        const context = content.slice(contextStart, match.index + 50);
+        if (context.includes('muraqib-ignore-dead')) {
+          // opt-out present, skip reporting
+          continue;
+        }
+
         const lineNum = content.slice(0, match.index).split("\n").length;
         unusedExports.push(`${relativePath}:${lineNum} (${exportedName})`);
         reports.push(`Potentially unused export: ${relativePath}:${lineNum} — "${exportedName}" is not imported anywhere else`);
