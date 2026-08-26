@@ -45,8 +45,12 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const graph: Map<string, Set<string>> = new Map();
 
   for (const scannedFile of scannedFiles) {
-    // scanProjectFiles returns { path, relativePath, content }
     const { relativePath, content, path: fullPath } = scannedFile as any;
+    const isGenerated = /(?:\.d\.ts|generated|dist|build|coverage|node_modules)/i.test(relativePath);
+    if (isGenerated) {
+      continue;
+    }
+
     graph.set(relativePath, new Set());
 
     const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
@@ -75,9 +79,12 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
       }
     }
 
-    // Run deprecated API detection on file content using defined patterns
     for (const dp of DEPRECATED_PATTERNS) {
       if (dp.pattern.test(content)) {
+        const isAllowedPattern = /require\s*\(/.test(dp.pattern.source) && /(?:src\/index|scripts|config|tests)/i.test(relativePath);
+        if (isAllowedPattern) {
+          continue;
+        }
         const suggestion = dp.suggestion;
         const message = `Deprecated API usage in ${relativePath}: ${dp.pattern} -> ${suggestion}`;
         deprecatedImports.push(message);

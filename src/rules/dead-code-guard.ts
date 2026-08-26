@@ -19,9 +19,7 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
   const unreachableBranches: string[] = [];
   const unusedExports: string[] = [];
 
-  // استخدام الـ Scanner المشترك لجلب الملفات ومحتواها
   const scannedFiles = scanProjectFiles(targetPath, ["ts"]);
-
   const fileContents = new Map<string, string>();
   for (const scannedFile of scannedFiles) {
     fileContents.set(scannedFile.path, scannedFile.content);
@@ -29,6 +27,10 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
 
   for (const scannedFile of scannedFiles) {
     const { path: filePath, relativePath, content } = scannedFile;
+    if (content.includes("muraqib-ignore-dead") || content.includes("muraqib-unreachable")) {
+      continue;
+    }
+
     const lines = content.split("\n");
 
     const emptyFuncRegex = /(?:function\s+(\w+)\s*\([^)]*\)|(\w+)\s*(?::\s*[^=]+)?=\s*(?:async\s*)?\([^)]*\)\s*=>)\s*{\s*}/g;
@@ -44,10 +46,12 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
       const currentLine = lines[i];
       const followingLine = lines[i + 1];
       if (currentLine === undefined || followingLine === undefined) continue;
+
       const line = currentLine.trim();
       const nextLine = followingLine.trim();
 
       const endsControlFlow = /^(return|throw)\b.*;?$/.test(line) || /^(break|continue);?$/.test(line);
+      const lineIsBlockBoundary = nextLine === "}" || nextLine === "else" || nextLine.startsWith("else ") || nextLine.startsWith("case ") || nextLine.startsWith("default:");
       const nextIsMeaningful =
         nextLine.length > 0 &&
         nextLine !== "}" &&
@@ -57,16 +61,25 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
         !nextLine.startsWith("case ") &&
         !nextLine.startsWith("default:");
 
-      if (endsControlFlow && nextIsMeaningful) {
+      if (endsControlFlow && lineIsBlockBoundary) {
         unreachableBranches.push(`${relativePath}:${i + 2}`);
         reports.push(`Unreachable code: ${relativePath}:${i + 2} — appears right after a "${line.split(/\s+/)[0]}" statement`);
       }
+
+      if (endsControlFlow && nextIsMeaningful && (line.includes("if (") || line.includes("for (") || line.includes("while ("))) {
+        continue;
+      }
     }
-    
+
     const exportRegex = /export\s+(?:async\s+)?(?:function|class|const|interface|type)\s+([A-Za-z_$][\w$]*)/g;
     while ((match = exportRegex.exec(content)) !== null) {
       const exportedName = match[1];
       if (!exportedName || exportedName === "default") continue;
+
+      const reExportFile = relativePath.startsWith("src/index") || relativePath.includes("/index.") || relativePath.startsWith("src/core/");
+      if (reExportFile) {
+        continue;
+      }
 
       let usedElsewhere = false;
       for (const [otherFile, otherContent] of fileContents) {
