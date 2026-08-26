@@ -20,8 +20,18 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
   const callbackHell: string[] = [];
   const floatingPromises: string[] = [];
 
-  // استخدام الـ Scanner المشترك لجلب ملفات TypeScript و JavaScript معاً
-  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+  // Use the shared scanner to fetch files. Prefer TypeScript sources when both .ts and .js exist
+  let scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+
+  // Filter: if a .ts version exists for the same relative path, ignore the .js artifact (avoids duplicate findings)
+  const tsSet = new Set(scannedFiles.filter(f => f.relativePath.endsWith('.ts')).map(f => f.relativePath.replace(/\.ts$/, '')));
+  scannedFiles = scannedFiles.filter(f => {
+    if (f.relativePath.endsWith('.js')) {
+      const base = f.relativePath.replace(/\.js$/, '');
+      return !tsSet.has(base);
+    }
+    return true;
+  });
 
   for (const scannedFile of scannedFiles) {
     const { relativePath, content } = scannedFile;
