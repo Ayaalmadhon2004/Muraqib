@@ -40,7 +40,9 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const duplicatePackages: string[] = [];
   const deprecatedImports: string[] = [];
 
-  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+  let scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+  // Avoid scanning this auditor file itself to prevent self-matching of deprecated patterns
+  scannedFiles = scannedFiles.filter(f => !f.relativePath.includes('core/dependency-guard'));
 
   const graph: Map<string, Set<string>> = new Map();
 
