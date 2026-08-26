@@ -1,6 +1,6 @@
 import * as bcrypt from 'bcryptjs';
-import { RegisterInput } from '../models/register-input.model.js';
-import { UserRepository } from '../repositories/user.repository.js';
+import type { RegisterInput } from '../models/register-input.model.js';
+import type { UserRepository } from '../repositories/user.repository.js';
 import HttpException from '../models/http-exception.model.js';
 
 export class AuthService {
