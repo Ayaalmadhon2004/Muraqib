@@ -44,7 +44,8 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const graph: Map<string, Set<string>> = new Map();
 
   for (const scannedFile of scannedFiles) {
-    const { relativePath, content, fullPath } = scannedFile;
+    // scanProjectFiles returns { path, relativePath, content }
+    const { relativePath, content, path: fullPath } = scannedFile as any;
     graph.set(relativePath, new Set());
 
     const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;

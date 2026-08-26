@@ -14,10 +14,10 @@ export interface ScannedFile {
 
 export function scanProjectFiles(targetPath: string, fileExtensions: string[] = ["ts", "js"]): ScannedFile[] {
   // بناء نمط البحث ديناميكياً بناءً على الامتدادات المطلوبة
-  const pattern = fileExtensions.length === 1 ? `**/*.${fileExtensions[0]}` : `**/*.{${fileExtensions.join(",")*}}`.replace('*', ''); // تصحيح النمط للـ glob
+  const pattern = fileExtensions.length === 1 ? `**/*.${fileExtensions[0]}` : `**/*.{${fileExtensions.join(",")}}`;
   
   // استثناء المجلدات غير المرغوبة
-  const files = globSync("**/*.{ts,js}", {
+  const files = globSync(pattern, {
     cwd: targetPath,
     absolute: true,
     ignore: ["node_modules/**", "dist/**", "tests/**", "**/*.spec.ts", "**/*.d.ts"],
