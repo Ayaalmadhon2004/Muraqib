@@ -32,7 +32,6 @@ app.use(express.static(publicDir, { maxAge: cacheSeconds * 1000 }));
 // Basic health route
 app.get("/", (req, res) => {
   const indexPath = path.join(publicDir, "index.html");
-  const fs = require("fs");
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
