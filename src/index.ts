@@ -759,23 +759,28 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
     upgrade: args.includes("--upgrade"),                       // NEW
   };
 
-  runAudit(opts).then((res) => {
-    const failed =
-      !res.env.ok ||
-      !res.images.ok ||
-      !res.bundle.ok ||
-      !res.network.ok ||
-      !res.memory.ok ||
-      !res.security.ok ||
-      !res.deadCode.ok ||
-      !res.dependencies.ok ||
-      !res.async.ok ||
-      !res.config.ok ||
-      !res.performance.ok ||
-      !res.optimizer.ok ||
-      !res.renderBlocking.ok;
-    process.exit(failed ? 1 : 0);
-  });
+  runAudit(opts)
+    .then((res) => {
+      const failed =
+        !res.env.ok ||
+        !res.images.ok ||
+        !res.bundle.ok ||
+        !res.network.ok ||
+        !res.memory.ok ||
+        !res.security.ok ||
+        !res.deadCode.ok ||
+        !res.dependencies.ok ||
+        !res.async.ok ||
+        !res.config.ok ||
+        !res.performance.ok ||
+        !res.optimizer.ok ||
+        !res.renderBlocking.ok;
+      process.exit(failed ? 1 : 0);
+    })
+    .catch((err) => {
+      console.error("Audit runner failed:", err);
+      process.exit(2);
+    });
 }
 
 function getArg(args: string[], flag: string): string | undefined {
