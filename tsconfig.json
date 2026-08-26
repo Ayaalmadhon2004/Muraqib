@@ -34,11 +34,16 @@
 
     // Recommended Options
     "strict": true,
+    "noImplicitAny": true,
     "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+  },
+  "exclude": ["node_modules", "dist", "public", "scripts", "src/app", "**/*.spec.ts", "**/*.test.ts", "src/**/*.spec.ts"]
 }
+

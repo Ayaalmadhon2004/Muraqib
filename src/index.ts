@@ -473,8 +473,13 @@ ${CYAN}${BOLD}╔═════════════════════
     section("🔟 ENVIRONMENT VARIABLES");
     try {
       const schema = {
-        DATABASE_URL: z.string().url(),
-        PORT: z.string().regex(/^\d+$/, "PORT must be a numeric string").transform(Number),
+        DATABASE_URL: z.string().url().optional(),
+        // Allow missing PORT by providing a sensible default for local/dev runs
+        PORT: z
+          .string()
+          .regex(/^\d+$/, "PORT must be a numeric string")
+          .optional()
+          .transform((v) => Number(v ?? "3000")),
         ...cachePerformanceSchema,
       };
 

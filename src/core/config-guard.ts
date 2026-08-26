@@ -95,7 +95,7 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   const insecureConfigs: string[] = [];
 
   // التأكد من استخدام الـ scanner المشترك إذا لزم الأمر في مرور الملفات
-  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+  scanProjectFiles(targetPath, ["ts", "js"]);
 
   // Check required config files
   for (const file of REQUIRED_CONFIG_FILES) {

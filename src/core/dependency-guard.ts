@@ -21,16 +21,17 @@ export interface DependencyAuditResult {
   deprecatedImports: string[];
 }
 
-const DEPRECATED_APIS: Record<string, string> = {
-  "url.parse": "Use new URL() constructor instead",
-  "querystring": "Use URLSearchParams instead",
-  "crypto.createDecipher": "Use crypto.createDecipheriv instead",
-  "Buffer": "Use Buffer.from() or Buffer.alloc() explicitly",
-  "fs.exists": "Use fs.existsSync or fs.promises.access instead",
-  "process.binding": "Deprecated internal API",
-  "__dirname": "Use import.meta.url with fileURLToPath instead (ESM)",
-  "require": "Use dynamic import() instead (ESM)",
-};
+const DEPRECATED_PATTERNS: Array<{ pattern: RegExp; suggestion: string }> = [
+  { pattern: /\burl\.parse\b/, suggestion: "Use new URL() constructor instead" },
+  { pattern: /\bquerystring\b/, suggestion: "Use URLSearchParams instead" },
+  { pattern: /\bcrypto\.createDecipher\b/, suggestion: "Use crypto.createDecipheriv instead" },
+  { pattern: /\bnew\s+Buffer\s*\(/, suggestion: "Use Buffer.from() or Buffer.alloc() explicitly" },
+  { pattern: /\bBuffer\s*\(/, suggestion: "Avoid calling Buffer() as a function; use Buffer.from/alloc" },
+  { pattern: /\bfs\.exists\s*\(/, suggestion: "Use fs.existsSync or fs.promises.access instead" },
+  { pattern: /\bprocess\.binding\b/, suggestion: "Deprecated internal API" },
+  { pattern: /__dirname\b/, suggestion: "Use import.meta.url with fileURLToPath instead (ESM)" },
+  { pattern: /\brequire\s*\(/, suggestion: "Use dynamic import() instead (ESM)" },
+];
 
 export function performDependencyAudit(targetPath: string): DependencyAuditResult {
   const reports: string[] = [];
@@ -44,7 +45,8 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const graph: Map<string, Set<string>> = new Map();
 
   for (const scannedFile of scannedFiles) {
-    const { relativePath, content, fullPath } = scannedFile;
+    // scanProjectFiles returns { path, relativePath, content }
+    const { relativePath, content, path: fullPath } = scannedFile as any;
     graph.set(relativePath, new Set());
 
     const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
@@ -52,13 +54,6 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
     while ((match = importRegex.exec(content)) !== null) {
       const importPath = match[1];
       if (!importPath) continue;
-
-      for (const [deprecated, suggestion] of Object.entries(DEPRECATED_APIS)) {
-        if (content.includes(deprecated)) {
-          deprecatedImports.push(`${relativePath}: ${deprecated} — ${suggestion}`);
-          reports.push(`Deprecated API usage: ${relativePath} uses ${deprecated}`);
-        }
-      }
 
       if (importPath.startsWith(".") || importPath.startsWith("/")) {
         const resolved = path.resolve(path.dirname(fullPath), importPath);
@@ -77,6 +72,16 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
             break;
           }
         }
+      }
+    }
+
+    // Run deprecated API detection on file content using defined patterns
+    for (const dp of DEPRECATED_PATTERNS) {
+      if (dp.pattern.test(content)) {
+        const suggestion = dp.suggestion;
+        const message = `Deprecated API usage in ${relativePath}: ${dp.pattern} -> ${suggestion}`;
+        deprecatedImports.push(message);
+        reports.push(message);
       }
     }
   }
