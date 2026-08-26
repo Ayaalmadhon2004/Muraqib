@@ -1,6 +1,7 @@
 import express from "express";
 import compression from "compression";
 import path from "path";
+import fs from "fs";
 import { performanceMonitor } from "./middleware/performance.middleware.js";
 import { applySecurityMiddleware } from "./middleware/security.middleware.js";
 
