@@ -18,4 +18,5 @@ export function createGuard<T extends z.ZodRawShape>(
   }
 
   return { data: result.data };
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 }

@@ -26,6 +26,7 @@ const muraqibOptions: MuraqibOptionDefinition[] = [
 
 function toEnvKey(optionName: string): string {
   return `MURAQIB_${optionName.replace(/([A-Z])/g, "_$1").toUpperCase()}`;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 }
 
 export function getMuraqibEnvMap(): Record<string, MuraqibOptionInfo> {
@@ -39,6 +40,7 @@ export function getMuraqibEnvMap(): Record<string, MuraqibOptionInfo> {
     };
   }
 
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   return map;
 }
 

@@ -92,6 +92,7 @@ export const runComprehensiveBundleAudit = () => {
             // تخطي مجلدات النظام والـ dependencies لحماية الـ CPU
             if (file === 'node_modules' || file === '.next' || file === 'dist' || file === 'build' || file.startsWith('.')) {
                 continue;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
             }
             
             if (stat.isDirectory()) {
@@ -100,9 +101,11 @@ export const runComprehensiveBundleAudit = () => {
             } else {
                 const ext = path.extname(file);
                 if (supportedExtensions.includes(ext)) {
+// muraqib-unreachable: flagged by automated triage. Review before removal.
                     return fullPath;
                 }
             }
+// muraqib-unreachable: flagged by automated triage. Review before removal.
         }
         return null;
     }

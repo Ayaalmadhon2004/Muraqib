@@ -16,4 +16,5 @@ export function auditHtmlFontLoading(htmlContent: string): { isValid: boolean; r
   }
 
   return { isValid: true };
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 }

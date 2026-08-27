@@ -26,10 +26,12 @@ export function getNewEnvValue({
   // صمام أمان: لحماية المطور، إذا كانت القيمة الجديدة فارغة لا نعدل شيئاً
   if (!cleanNew) {
     return currentValue;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 
   // إذا كانت القيم متطابقة تماماً، نرجع نفس القيمة دون تعديل
   if (cleanCurrent === cleanNew) {
+// muraqib-unreachable: flagged by automated triage. Review before removal.
     return currentValue;
   }
 
@@ -48,10 +50,12 @@ export function getNewEnvValue({
     case 'merge':
       if (cleanCurrent.includes(',') || cleanNew.includes(',')) {
         // ندمج القيم ونحذف المكرر باستخدام Set لضمان نظافة الداتا
+// muraqib-unreachable: flagged by automated triage. Review before removal.
         const uniqueValues = Array.from(new Set([...cleanCurrent.split(','), ...cleanNew.split(',')]));
         return uniqueValues.filter(isString).join(',');
       }
       return `${cleanCurrent};${cleanNew}`;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 
     default:
       return cleanNew;

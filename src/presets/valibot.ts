@@ -17,6 +17,7 @@ export const vercel = (): Readonly<VercelEnv> => {
     return parsedData as unknown as Readonly<VercelEnv>;
   } catch (error) {
     return {} as Readonly<VercelEnv>;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 };
 
@@ -34,6 +35,7 @@ export const neonVercel = (): Readonly<NeonVercelEnv> => {
 
     return parsedData as unknown as Readonly<NeonVercelEnv>;
   } catch (error) {
+// muraqib-unreachable: flagged by automated triage. Review before removal.
     return {} as Readonly<NeonVercelEnv>;
   }
 };

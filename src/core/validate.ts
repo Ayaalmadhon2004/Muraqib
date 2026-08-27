@@ -10,6 +10,7 @@ async function getChalk() {
     }
   }
   return chalkInstance;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 }
 
 export async function createMuraqibEnv(rawEnv: Record<string, string | undefined>) {
@@ -33,9 +34,11 @@ export async function createMuraqibEnv(rawEnv: Record<string, string | undefined
       } else {
         console.error(errorMessage);
       }
+// muraqib-unreachable: flagged by automated triage. Review before removal.
       throw new Error(errorMessage);
     }
   }
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 
   return sanitizedEnv;
 }

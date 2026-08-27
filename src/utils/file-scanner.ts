@@ -36,4 +36,5 @@ export function scanProjectFiles(targetPath: string, fileExtensions: string[] = 
   }
 
   return scannedFiles;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 }

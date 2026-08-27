@@ -124,6 +124,7 @@ function runRenderBlockingAudit(targetPath: string) {
 
   if (result.status === "ok") {
     return { isOptimized: true, reports: [] };
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 
   const reports: string[] = [];
@@ -670,6 +671,7 @@ ${CYAN}${BOLD}╔═════════════════════
   }
   console.log("");
 
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   return result;
 }
 
@@ -678,6 +680,7 @@ ${CYAN}${BOLD}╔═════════════════════
 // =========================================================================
 async function runUpgradePackages(targetPath: string) {
   const pkgPath = path.join(targetPath, "package.json");
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   if (!fs.existsSync(pkgPath)) {
     throw new Error("No package.json found at target path");
   }
@@ -712,6 +715,7 @@ async function runUpgradePackages(targetPath: string) {
 // =========================================================================
 // Error extraction (fixed)
 // =========================================================================
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 function extractEnvErrors(error: any): string[] {
   if (error?.isMuraqibCustom && Array.isArray(error.errors)) {
     return error.errors.map((e: any) => `${e.path || e.field || "unknown"}: ${e.message || "invalid"}`);
@@ -725,6 +729,7 @@ function extractEnvErrors(error: any): string[] {
   if (error?.errors && Array.isArray(error.errors)) {
     return error.errors.map((e: any) => {
       const path = Array.isArray(e.path) ? e.path.join(".") : (e.path || e.field || "unknown");
+// muraqib-unreachable: flagged by automated triage. Review before removal.
       return `${path}: ${e.message || "invalid"}`;
     });
   }
@@ -778,6 +783,7 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
       !res.renderBlocking.ok;
     process.exit(failed ? 1 : 0);
   });
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 }
 
 function getArg(args: string[], flag: string): string | undefined {

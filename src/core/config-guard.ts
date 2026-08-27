@@ -50,6 +50,7 @@ function stripJsonComments(input: string): string {
         result += char;
       }
       continue;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
     }
 
     if (inBlockComment) {
@@ -57,6 +58,7 @@ function stripJsonComments(input: string): string {
         inBlockComment = false;
         i++;
       }
+// muraqib-unreachable: flagged by automated triage. Review before removal.
       continue;
     }
 
@@ -67,6 +69,7 @@ function stripJsonComments(input: string): string {
         i++;
       } else if (char === '"') {
         inString = false;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
       }
       continue;
     }
@@ -83,6 +86,7 @@ function stripJsonComments(input: string): string {
     } else {
       result += char;
     }
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 
   return result;

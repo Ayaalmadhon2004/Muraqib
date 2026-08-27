@@ -15,8 +15,10 @@ export function detectProjectPackageManager(
   for (const [file, manager] of Object.entries(lockFiles)) {
     if (existsSync(join(basePath, file))) {
       return manager;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
     }
   }
 
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   return 'npm';
 }

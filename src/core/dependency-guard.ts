@@ -49,6 +49,7 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
     const isGenerated = /(?:\.d\.ts|generated|dist|build|coverage|node_modules)/i.test(relativePath);
     if (isGenerated) {
       continue;
+// muraqib-unreachable: flagged by automated triage. Review before removal.
     }
 
     graph.set(relativePath, new Set());
@@ -73,6 +74,7 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
           if (fs.existsSync(p)) {
             const targetRelative = path.relative(targetPath, p);
             graph.get(relativePath)!.add(targetRelative);
+// muraqib-unreachable: flagged by automated triage. Review before removal.
             break;
           }
         }
@@ -82,6 +84,7 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
     for (const dp of DEPRECATED_PATTERNS) {
       if (dp.pattern.test(content)) {
         const isAllowedPattern = /require\s*\(/.test(dp.pattern.source) && /(?:src\/index|scripts|config|tests)/i.test(relativePath);
+// muraqib-unreachable: flagged by automated triage. Review before removal.
         if (isAllowedPattern) {
           continue;
         }

@@ -16,6 +16,7 @@ export const AuthController = {
     } catch (error: any) {
       if (error.name === 'ZodError') {
         return res.status(400).json({ success: false, errors: error.errors });
+// muraqib-unreachable: flagged by automated triage. Review before removal.
       }
       next(error);
     }
