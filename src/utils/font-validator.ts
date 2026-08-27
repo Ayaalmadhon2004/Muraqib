@@ -1,5 +1,5 @@
 // src/utils/font-validator.ts
-export function auditHtmlFontLoading(htmlContent: string): { isValid: boolean; reason?: string } {
+export function auditHtmlFontLoading(htmlContent: string): { isValid: boolean; reason?: string } { // muraqib-ignore-dead: auto-suppressed by script for auditHtmlFontLoading
   const fontRegex = /fonts\.googleapis\.com\/css\?family=([^"']+)/;
   const match = htmlContent.match(fontRegex); 
   

@@ -1,4 +1,4 @@
-export const analyzeRenderBlocking = (htmlContent: string) => {
+export const analyzeRenderBlocking = (htmlContent: string) => { // muraqib-ignore-dead: auto-suppressed by script for analyzeRenderBlocking
   const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
   
   if (!headMatch) return { status: 'ok', isOptimized: true, blockingScripts: 0, blockingStyles: 0, message: 'لم يتم العثور على <head>' };

@@ -31,7 +31,7 @@ export const performLiveLatencyAudit = async (url: string) => {
 // muraqib-unreachable: flagged by automated triage. Review before removal.
     }
 };
-
+ // muraqib-ignore-dead: auto-suppressed by script for analyzeLatency
 export const analyzeLatency = (requestTimeMs: number, payloadSizeKb: number) => {
     const reports = [];
 

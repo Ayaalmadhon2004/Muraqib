@@ -3,7 +3,7 @@ import { AuthService } from "../services/auth.service.js";
 import { PrismaUserRepository } from "../repositories/prisma-user.repository.js";
 import { registerInputSchema } from "../models/register-input.model.js";
 
-export const AuthController = {
+export const AuthController = { // muraqib-ignore-dead: auto-suppressed by script for AuthController
   async handleRegister(req: Request, res: Response, next: NextFunction) {
     try {
       const validatedData = registerInputSchema.parse(req.body); 

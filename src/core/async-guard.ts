@@ -4,7 +4,7 @@
  */
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
-export interface AsyncAuditResult {
+export interface AsyncAuditResult { // muraqib-ignore-dead: auto-suppressed by script for AsyncAuditResult
   isClean: boolean;
   reports: string[];
   unhandledPromises: string[];

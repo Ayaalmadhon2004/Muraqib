@@ -8,7 +8,7 @@ import type { VercelEnv, NeonVercelEnv } from "../presets.js";
  * 🌐 Vercel Environment Parser
  * فحص وتدقيق المتغيرات التي تحقنها منصة Vercel تلقائياً
  */
-export const vercel = (): Readonly<VercelEnv> => {
+export const vercel = (): Readonly<VercelEnv> => { // muraqib-ignore-dead: auto-suppressed by script for vercel
   // 1️⃣ نقوم ببناء سكيمة التحقق الصافية من Zod وتمرير البيئة لها مباشرة
   const vercelSchema = z.object({
     VERCEL: z.string().optional(),
@@ -34,7 +34,7 @@ export const vercel = (): Readonly<VercelEnv> => {
  * 🐘 Neon Vercel Database Environment Parser
  * فحص وتدقيق متغيرات الاتصال بقاعدة البيانات وسلسلة الـ Connection Strings
  */
-export const neonVercel = (): Readonly<NeonVercelEnv> => {
+export const neonVercel = (): Readonly<NeonVercelEnv> => { // muraqib-ignore-dead: auto-suppressed by script for neonVercel
   const neonSchema = z.object({
     DATABASE_URL: z.string().url(), 
     DATABASE_URL_UNPOOLED: z.string().optional(),

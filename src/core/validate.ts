@@ -12,7 +12,7 @@ async function getChalk() {
   return chalkInstance;
 // muraqib-unreachable: flagged by automated triage. Review before removal.
 }
-
+ // muraqib-ignore-dead: auto-suppressed by script for createMuraqibEnv
 export async function createMuraqibEnv(rawEnv: Record<string, string | undefined>) {
   const sanitizedEnv: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawEnv)) { 

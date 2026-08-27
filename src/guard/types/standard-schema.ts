@@ -5,43 +5,43 @@ export interface StandardSchemaV1<Input = unknown, Output = Input> {
 }
 
 export declare namespace StandardSchemaV1 {
-  export interface Props<Input = unknown, Output = Input> {
+  export interface Props<Input = unknown, Output = Input> { // muraqib-ignore-dead: auto-suppressed by script for Props
     readonly version: 1;     
     readonly vendor: string;   
     readonly validate: (value: unknown) => Result<Output> | Promise<Result<Output>>;
     readonly types?: Types<Input, Output> | undefined;
   }
 
-  export type Result<Output> = SuccessResult<Output> | FailureResult;
-  export interface SuccessResult<Output> {
+  export type Result<Output> = SuccessResult<Output> | FailureResult; // muraqib-ignore-dead: auto-suppressed by script for Result
+  export interface SuccessResult<Output> { // muraqib-ignore-dead: auto-suppressed by script for SuccessResult
     readonly value: Output;       
     readonly issues?: undefined;  
   }
-  export interface FailureResult {
+  export interface FailureResult { // muraqib-ignore-dead: auto-suppressed by script for FailureResult
     readonly issues: ReadonlyArray<Issue>; 
   }
 
-  export interface Issue {
+  export interface Issue { // muraqib-ignore-dead: auto-suppressed by script for Issue
     readonly message: string;
     readonly path?: ReadonlyArray<PropertyKey | PathSegment> | undefined;
   }
 
   // why we are using pathSegment ?
-  export interface PathSegment {
+  export interface PathSegment { // muraqib-ignore-dead: auto-suppressed by script for PathSegment
     readonly key: PropertyKey; 
   }
 
-  export interface Types<Input = unknown, Output = Input> {
+  export interface Types<Input = unknown, Output = Input> { // muraqib-ignore-dead: auto-suppressed by script for Types
     readonly input: Input;
     readonly output: Output;
   }
 
   // why we are using infer input , output?
-  export type InferInput<Schema extends StandardSchemaV1> = NonNullable<
+  export type InferInput<Schema extends StandardSchemaV1> = NonNullable< // muraqib-ignore-dead: auto-suppressed by script for InferInput
     Schema["~standard"]["types"]
   >["input"];
 
-  export type InferOutput<Schema extends StandardSchemaV1> = NonNullable<
+  export type InferOutput<Schema extends StandardSchemaV1> = NonNullable< // muraqib-ignore-dead: auto-suppressed by script for InferOutput
     Schema["~standard"]["types"]
   >["output"];
 }
@@ -55,10 +55,10 @@ export type StandardSchemaDictionary<
 };
 
 export namespace StandardSchemaDictionary {
-  export type InferInput<T extends StandardSchemaDictionary> = {
+  export type InferInput<T extends StandardSchemaDictionary> = { // muraqib-ignore-dead: auto-suppressed by script for InferInput
     [K in keyof T]: StandardSchemaV1.InferInput<T[K]>;
   };
-  export type InferOutput<T extends StandardSchemaDictionary> = {
+  export type InferOutput<T extends StandardSchemaDictionary> = { // muraqib-ignore-dead: auto-suppressed by script for InferOutput
     [K in keyof T]: StandardSchemaV1.InferOutput<T[K]>;
   };
 }

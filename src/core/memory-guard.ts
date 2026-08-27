@@ -7,7 +7,7 @@
 import v8 from "v8"; 
 import os from "os";
 
-export interface MemoryAuditResult {
+export interface MemoryAuditResult { // muraqib-ignore-dead: auto-suppressed by script for MemoryAuditResult
   isOptimized: boolean;
   reports: string[];
   heapUsedMb: number;

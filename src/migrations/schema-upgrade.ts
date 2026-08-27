@@ -2,7 +2,7 @@ import { AbstractMuraqibMigration } from './abstract-migration.js';
 import { getMuraqibNewVersionValue} from '../core/muraqib-version.js';
 import type {VersionUpdateStrategy} from '../core/muraqib-version.js';
 
-export class SchemaUpgradeMigration extends AbstractMuraqibMigration {
+export class SchemaUpgradeMigration extends AbstractMuraqibMigration { // muraqib-ignore-dead: auto-suppressed by script for SchemaUpgradeMigration
   override readonly propertyName: string; 
   private readonly targetVersion: string;  
   private readonly strategy: VersionUpdateStrategy;

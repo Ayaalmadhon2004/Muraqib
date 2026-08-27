@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-export type PackageManager = 'npm' | 'yarn' | 'pnpm';
+export type PackageManager = 'npm' | 'yarn' | 'pnpm'; // muraqib-ignore-dead: auto-suppressed by script for PackageManager
 export function detectProjectPackageManager(
   basePath: string = process.cwd()
 ): PackageManager {

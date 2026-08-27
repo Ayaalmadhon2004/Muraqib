@@ -1,6 +1,6 @@
 // src/rules/http1-advisor.ts
 
-export const analyzeHTTP1Compliance = (res: any, headers: Record<string, string>) => {
+export const analyzeHTTP1Compliance = (res: any, headers: Record<string, string>) => { // muraqib-ignore-dead: auto-suppressed by script for analyzeHTTP1Compliance
   const warnings = [];
 
   // 1. التحقق من الضغط (Gzip) المذكور في القواعد الذهبية

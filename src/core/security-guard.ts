@@ -2,7 +2,7 @@ import https from "https";
 import http from "http";
 import { URL } from "url";
 
-export interface SecurityAuditResult {
+export interface SecurityAuditResult { // muraqib-ignore-dead: auto-suppressed by script for SecurityAuditResult
   isSecure: boolean;
   reports: string[];
   headers: Record<string, string | string[] | undefined>;

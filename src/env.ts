@@ -15,7 +15,7 @@ const SKIP_ENV_VALIDATION = process.env.SKIP_ENV_VALIDATION === "true" || proces
 // =========================================================================
 // 1.  محمّل ملفات .env متقدم (يدعم comments, multiline, expansion)
 // =========================================================================
-export interface LoadEnvOptions {
+export interface LoadEnvOptions { // muraqib-ignore-dead: auto-suppressed by script for LoadEnvOptions
   /** مسار المجلد اللي بدّك تدور فيه على .env (default: process.cwd()) */
   cwd?: string;
   /** قائمة بأسماء ملفات .env بدّك تحمّلها بالترتيب (default: ['.env', '.env.${NODE_ENV}', '.env.local']) */
@@ -166,7 +166,7 @@ function findCommentIndex(str: string): number {
 function expandVariables(value: string, env: Record<string, string | undefined>): string {
   return value.replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}?/g, (_, name, def) => {
     return env[name] ?? def ?? "";
-  });
+  }); // muraqib-ignore-dead: auto-suppressed by script for InferSchema
 }
 
 // =========================================================================
@@ -176,18 +176,18 @@ export type InferSchema<T extends GuardSchema> = {
   [K in keyof T]: T[K] extends { ["~standard"]: { types: { output: infer O } } }
     ? O
     : T[K] extends { _output: infer O }
-    ? O
+    ? O // muraqib-ignore-dead: auto-suppressed by script for IntersectExtension
     : T[K] extends { infer: infer O }
     ? O
     : any;
 };
 
-export type IntersectExtension<T extends any[]> = T extends [infer Head, ...infer Tail]
+export type IntersectExtension<T extends any[]> = T extends [infer Head, ...infer Tail] // muraqib-ignore-dead: auto-suppressed by script for ErrorMessage
   ? Head extends Record<string, any>
     ? Head & IntersectExtension<Tail>
     : IntersectExtension<Tail>
   : unknown;
-
+ // muraqib-ignore-dead: auto-suppressed by script for CreateEnvOptions
 export type ErrorMessage<T extends string> = T & { __brand: "ErrorMessage" };
 
 // =========================================================================

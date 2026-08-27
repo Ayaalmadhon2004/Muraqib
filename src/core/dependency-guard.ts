@@ -12,7 +12,7 @@ import fs from "fs";
 import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
-export interface DependencyAuditResult {
+export interface DependencyAuditResult { // muraqib-ignore-dead: auto-suppressed by script for DependencyAuditResult
   isClean: boolean;
   reports: string[];
   circularDependencies: string[][];

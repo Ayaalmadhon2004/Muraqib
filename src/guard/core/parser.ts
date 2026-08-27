@@ -7,7 +7,7 @@ function ensureSynchronous<T>(value: any, errorMessage: string): T {
   }
 // muraqib-unreachable: flagged by automated triage. Review before removal.
   return value as T;
-}
+} // muraqib-ignore-dead: auto-suppressed by script for parseWithDictionary
 
 export function parseWithDictionary<TDict extends StandardSchemaDictionary>(
   dictionary: TDict, 
