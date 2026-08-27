@@ -45,33 +45,30 @@ function stripJsonComments(input: string): string {
     const nextChar = input[i + 1];
 
     if (inLineComment) {
-      if (char === "\n") {
-        inLineComment = false;
-        result += char;
-      }
-      continue;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
+    if (char === "\n") {
+      inLineComment = false;
+      result += char;
+    }
+    continue;
     }
 
     if (inBlockComment) {
-      if (char === "*" && nextChar === "/") {
-        inBlockComment = false;
-        i++;
-      }
-// muraqib-unreachable: flagged by automated triage. Review before removal.
-      continue;
+    if (char === "*" && nextChar === "/") {
+      inBlockComment = false;
+      i++;
+    }
+    continue;
     }
 
     if (inString) {
-      result += char;
-      if (char === "\\") {
-        result += input[i + 1] ?? "";
-        i++;
-      } else if (char === '"') {
-        inString = false;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
-      }
-      continue;
+    result += char;
+    if (char === "\\") {
+      result += input[i + 1] ?? "";
+      i++;
+    } else if (char === '"') {
+      inString = false;
+    }
+    continue;
     }
 
     if (char === '"') {

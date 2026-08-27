@@ -15,7 +15,6 @@ interface ImageViolation {
 const scanDirectoryForImages = (dirPath: string, violations: ImageViolation[] = []): ImageViolation[] => {
     if (dirPath.includes('node_modules') || dirPath.includes('.git') || dirPath.includes('dist')) {
         return violations;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
     }
 
     const files = fs.readdirSync(dirPath);

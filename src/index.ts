@@ -804,8 +804,8 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
       process.exit(1);
     }
   })();
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 }
+
 
 function getArg(args: string[], flag: string): string | undefined {
   const i = args.indexOf(flag);

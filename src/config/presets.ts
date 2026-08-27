@@ -46,13 +46,10 @@ export async function fetchRemoteMuraqibPresets(url: string): Promise<PackageGro
     if (!response.ok) {
       console.warn(`⚠️  [Muraqib Remote Engine]: Failed to fetch presets from server (Status: ${response.status}). Falling back to local configuration.`);
       return MURAQIB_LOCAL_PRESETS;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
     }
     const remoteData = await response.json();
     if (Array.isArray(remoteData)) {  
-// muraqib-unreachable: flagged by automated triage. Review before removal.
       return remoteData as PackageGroup[];
-// muraqib-unreachable: flagged by automated triage. Review before removal.
     }
     return MURAQIB_LOCAL_PRESETS;
   } 

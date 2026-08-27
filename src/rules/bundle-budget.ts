@@ -92,7 +92,6 @@ export const runComprehensiveBundleAudit = () => {
             // تخطي مجلدات النظام والـ dependencies لحماية الـ CPU
             if (file === 'node_modules' || file === '.next' || file === 'dist' || file === 'build' || file.startsWith('.')) {
                 continue;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
             }
             
             if (stat.isDirectory()) {

@@ -28,7 +28,6 @@ export const performLiveLatencyAudit = async (url: string) => {
     } catch (error) {
         console.error(`❌ [Muraqib Audit Error]: Failed to fetch or measure the URL: ${url}`);
         return { isOptimized: false, reports: ["خطأ في الاتصال بالشبكة أو الرابط غير صالح."] };
-// muraqib-unreachable: flagged by automated triage. Review before removal.
     }
 };
  // muraqib-ignore-dead: auto-suppressed by script for analyzeLatency

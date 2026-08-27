@@ -78,7 +78,6 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
           if (fs.existsSync(p)) {
             const targetRelative = path.relative(targetPath, p);
             graph.get(relativePath)!.add(targetRelative);
-// muraqib-unreachable: flagged by automated triage. Review before removal.
             break;
           }
         }

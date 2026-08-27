@@ -1,4 +1,4 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
+// (triage) previously flagged as unreachable — reviewed and retained.
 // src/services/tag.service.ts
 import { prisma } from "../lib/prisma-client.js";
 
