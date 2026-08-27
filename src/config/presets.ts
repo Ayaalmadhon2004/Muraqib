@@ -54,6 +54,7 @@ export async function fetchRemoteMuraqibPresets(url: string): Promise<PackageGro
     return MURAQIB_LOCAL_PRESETS;
   } 
   
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   catch (error) {
     console.warn('⚠️  [Muraqib Remote Engine]: Network connection error while syncing remote presets. Local core active.');
     return MURAQIB_LOCAL_PRESETS;

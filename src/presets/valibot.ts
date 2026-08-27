@@ -1,9 +1,7 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 import { optional, string, picklist, pipe, url, parse } from "valibot";
 import type { VercelEnv, NeonVercelEnv } from "../presets.js";
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export const vercel = (): Readonly<VercelEnv> => {
+export const vercel = (): Readonly<VercelEnv> => { // muraqib-ignore-dead: auto-suppressed by script for vercel
   try {
     const vercelSchema = {
       VERCEL: optional(string()),
@@ -21,8 +19,7 @@ export const vercel = (): Readonly<VercelEnv> => {
     return {} as Readonly<VercelEnv>;
   }
 };
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-
+ // muraqib-ignore-dead: auto-suppressed by script for neonVercel
 export const neonVercel = (): Readonly<NeonVercelEnv> => {
   try {
     const neonSchema = {

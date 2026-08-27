@@ -1,6 +1,5 @@
 // src/models/registered-user.model.ts
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export interface RegisteredUser {
+export interface RegisteredUser { // muraqib-ignore-dead: auto-suppressed by script for RegisteredUser
   id: string;
   fullName: string;
   email: string;

@@ -1,7 +1,7 @@
 // muraqib-unreachable: flagged by automated triage. Review before removal.
 import * as bcrypt from 'bcryptjs';
-import { RegisterInput } from '../models/register-input.model.js';
-import { UserRepository } from '../repositories/user.repository.js';
+import type { RegisterInput } from '../models/register-input.model.js';
+import type { UserRepository } from '../repositories/user.repository.js';
 import HttpException from '../models/http-exception.model.js';
 
 export class AuthService {
@@ -17,7 +17,7 @@ export class AuthService {
       });
       return user;
     } catch (error) {
-      throw new HttpException(422, { errors: { email: ['could not create user'] } });
+    throw new HttpException(422, { errors: { email: ['could not create user'] } });
     }
   }
 }

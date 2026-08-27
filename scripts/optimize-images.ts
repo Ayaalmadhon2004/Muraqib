@@ -1,76 +1,45 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 import sharp from 'sharp';
 
-async function optimizeImage(filePath: string, maxKb = 500) {
-  const stat = fs.statSync(filePath);
-  const kb = Math.round(stat.size / 1024);
-  console.log(`Found image: ${filePath} (${kb} KB)`);
-
-  if (kb <= maxKb) {
-    console.log('Already under threshold; skipping');
-    return false;
+async function optimize() {
+  const repoRoot = process.cwd();
+  const imgPath = path.join(repoRoot, 'public', 'assets', 'Gemini_Generated_Image_qrr6ubqrr6ubqrr6.png');
+  if (!fs.existsSync(imgPath)) {
+    console.error('[optimize-images] Image not found:', imgPath);
+    process.exit(2);
   }
 
-  const ext = path.extname(filePath).toLowerCase();
-  const tmpPath = filePath + '.opt' + ext;
+  const statBefore = fs.statSync(imgPath);
+  console.log('[optimize-images] Before size:', (statBefore.size / 1024).toFixed(2), 'KB');
 
+  const tmpOut = imgPath + '.opt.png';
   try {
-    const image = sharp(filePath);
-    const meta = await image.metadata();
+    // lossless recompression via libpng settings
+    await sharp(imgPath)
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
+      .toFile(tmpOut);
 
-    // Try a sensible resize + compression based on original dimensions
-    let pipeline = image;
+    const statAfter = fs.statSync(tmpOut);
+    console.log('[optimize-images] After size:', (statAfter.size / 1024).toFixed(2), 'KB');
 
-    if (meta.width && meta.width > 1200) {
-      pipeline = pipeline.resize(Math.round(meta.width * 0.7));
-    }
-
-    if (ext === '.png') {
-      await pipeline.png({ quality: 80, compressionLevel: 9, palette: true }).toFile(tmpPath);
-    } else if (ext === '.jpg' || ext === '.jpeg') {
-      await pipeline.jpeg({ quality: 80 }).toFile(tmpPath);
-    } else if (ext === '.webp') {
-      await pipeline.webp({ quality: 80 }).toFile(tmpPath);
+    // Only replace if smaller
+    if (statAfter.size < statBefore.size) {
+      fs.renameSync(tmpOut, imgPath);
+      console.log('[optimize-images] Replaced original with optimized image');
     } else {
-      // fallback to webp
-      await pipeline.webp({ quality: 80 }).toFile(tmpPath);
+      fs.unlinkSync(tmpOut);
+      console.log('[optimize-images] Optimized output not smaller; original retained');
     }
-
-    const newStat = fs.statSync(tmpPath);
-    const newKb = Math.round(newStat.size / 1024);
-    console.log(`Optimized size: ${newKb} KB`);
-
-    if (newKb <= maxKb) {
-      fs.renameSync(tmpPath, filePath);
-      console.log(`Replaced original with optimized image (${newKb} KB)`);
-      return true;
-    } else {
-      // If not small enough, keep it but also replace (we prefer smaller)
-      fs.renameSync(tmpPath, filePath);
-      console.log(`Replaced original; optimized size is ${newKb} KB (still larger than threshold)`);
-      return true;
-    }
+    process.exit(0);
   } catch (err) {
-    console.error('Image optimization failed', err);
-    if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-    return false;
+    console.error('[optimize-images] Error:', err);
+    if (fs.existsSync(tmpOut)) fs.unlinkSync(tmpOut);
+    process.exit(1);
   }
 }
 
-async function run() {
-  const assetsDir = path.join(process.cwd(), 'public', 'assets');
-  if (!fs.existsSync(assetsDir)) {
-    console.log('No public/assets directory found; nothing to optimize.');
-    return;
-  }
-
-  const files = fs.readdirSync(assetsDir).filter(f => /\.(png|jpe?g|webp)$/i.test(f));
-  for (const f of files) {
-    const p = path.join(assetsDir, f);
-    await optimizeImage(p, 500);
-  }
-}
-
-run().catch((e) => { console.error(e); process.exit(1); });
+optimize().catch((err) => {
+  console.error('[optimize-images] Unhandled error:', err);
+  process.exit(1);
+});

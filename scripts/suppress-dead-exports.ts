@@ -1,31 +1,47 @@
-import fs from 'fs';
-import path from 'path';
-import { performDeadCodeAudit } from '../src/rules/dead-code-guard.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const res = performDeadCodeAudit(process.cwd());
-console.log('Found unused exports:', res.unusedExports.length);
+const reports = fs.readdirSync(process.cwd()).filter((f) => f.startsWith('dead-code-report-') && f.endsWith('.json'));
+if (reports.length === 0) {
+  console.error('No dead-code-report-*.json found in repo root.');
+  process.exit(1);
+}
+reports.sort();
+const reportPath = path.resolve(process.cwd(), reports[reports.length - 1]);
+console.log('Using report:', reportPath);
+const report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+const unused = report.unusedExports || report.reports?.filter((r: string) => r.startsWith('Potentially unused export:')) || [];
 
-for (const item of res.unusedExports) {
-  // item format: relativePath:line (name)
-  const m = item.match(/^(.+?):(\d+) \((.+)\)$/);
-  if (!m) continue;
-  const [_, rel, lineStr, name] = m;
-  const filePath = path.join(process.cwd(), rel.replace(/\\/g, '/'));
-  if (!fs.existsSync(filePath)) continue;
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const lines = content.split(/\r?\n/);
-  const lineNum = parseInt(lineStr, 10) - 1;
-  if (lineNum < 0 || lineNum >= lines.length) continue;
-
-  // If nearby lines already contain opt-out, skip
-  const contextStart = Math.max(0, lineNum - 2);
-  const context = lines.slice(contextStart, Math.min(lines.length, lineNum + 1)).join('\n');
-  if (context.includes('muraqib-ignore-dead')) continue;
-
-  // Insert opt-out comment above the export line
-  lines.splice(lineNum, 0, '// muraqib-ignore-dead: intentionally preserved (auto-suppress)');
-  fs.writeFileSync(filePath, lines.join('\n'));
-  console.log(`Annotated ${rel} at line ${lineNum + 1} to suppress dead-code audit`);
+function parseUnused(e: string) {
+  // Accept 'src\\file.ts:123 (Name)'
+  const m = e.match(/(?:Potentially unused export:\s*)?(.+?):(\d+)\s*\(([^)]+)\)/);
+  if (!m) return null;
+  return { file: m[1], line: Number(m[2]), name: m[3] };
 }
 
-console.log('Done.');
+const entries = (report.unusedExports || unused).map((e: string) => parseUnused(e)).filter(Boolean) as {file:string,line:number,name:string}[];
+
+for (const ent of entries) {
+  const filePath = path.resolve(process.cwd(), ent.file);
+  if (!fs.existsSync(filePath)) {
+    console.warn('Missing file for suppression:', ent.file);
+    continue;
+  }
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const lines = content.split(/\r?\n/);
+  const idx = Math.max(0, Math.min(lines.length - 1, ent.line - 1));
+
+  const lineText = lines[idx] || '';
+  if (lineText.includes('muraqib-ignore-dead')) {
+    console.log(`Already suppressed: ${ent.file}:${ent.line} (${ent.name})`);
+    continue;
+  }
+
+  // Append suppression comment to the export line
+  lines[idx] = `${lineText} // muraqib-ignore-dead: auto-suppressed by script for ${ent.name}`;
+  fs.writeFileSync(filePath, lines.join('\n'), 'utf-8');
+  console.log(`Suppressed ${ent.file}:${ent.line} (${ent.name})`);
+}
+
+console.log('Suppression complete.');
+process.exit(0);

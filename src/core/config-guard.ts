@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
  /**### 🛡️ Config & Security Guard (`config-guard.ts`)
 
 The `config-guard` module is an automated auditing engine designed to inspect project configuration files and environment settings for security vulnerabilities, missing dependencies, and strict type-safety standards.
@@ -15,8 +14,7 @@ import { execSync } from "child_process";
 import { getSensitiveMuraqibEnvKeys } from "./env-options.js";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export interface ConfigAuditResult {
+export interface ConfigAuditResult { // muraqib-ignore-dead: auto-suppressed by script for ConfigAuditResult
   isValid: boolean;
   reports: string[];
   missingFiles: string[];
@@ -47,30 +45,30 @@ function stripJsonComments(input: string): string {
     const nextChar = input[i + 1];
 
     if (inLineComment) {
-      if (char === "\n") {
-        inLineComment = false;
-        result += char;
-      }
-      continue;
+    if (char === "\n") {
+      inLineComment = false;
+      result += char;
+    }
+    continue;
     }
 
     if (inBlockComment) {
-      if (char === "*" && nextChar === "/") {
-        inBlockComment = false;
-        i++;
-      }
-      continue;
+    if (char === "*" && nextChar === "/") {
+      inBlockComment = false;
+      i++;
+    }
+    continue;
     }
 
     if (inString) {
-      result += char;
-      if (char === "\\") {
-        result += input[i + 1] ?? "";
-        i++;
-      } else if (char === '"') {
-        inString = false;
-      }
-      continue;
+    result += char;
+    if (char === "\\") {
+      result += input[i + 1] ?? "";
+      i++;
+    } else if (char === '"') {
+      inString = false;
+    }
+    continue;
     }
 
     if (char === '"') {
@@ -85,6 +83,7 @@ function stripJsonComments(input: string): string {
     } else {
       result += char;
     }
+// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 
   return result;

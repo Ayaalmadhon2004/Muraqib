@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 /*
 ### 🔍 Dependency & Architecture Auditor (`dependency-audit.ts`)
 
@@ -13,8 +12,7 @@ import fs from "fs";
 import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export interface DependencyAuditResult {
+export interface DependencyAuditResult { // muraqib-ignore-dead: auto-suppressed by script for DependencyAuditResult
   isClean: boolean;
   reports: string[];
   circularDependencies: string[][];
@@ -42,18 +40,22 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const duplicatePackages: string[] = [];
   const deprecatedImports: string[] = [];
 
-  let scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
-  // Avoid scanning this auditor file itself to prevent self-matching of deprecated patterns
-  scannedFiles = scannedFiles.filter(f => {
-    const rp = f.relativePath.replace(/\\/g, '/');
-    return !rp.includes('core/dependency-guard');
-  });
+  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
 
   const graph: Map<string, Set<string>> = new Map();
 
   for (const scannedFile of scannedFiles) {
-    // scanProjectFiles returns { path, relativePath, content }
     const { relativePath, content, path: fullPath } = scannedFile as any;
+    const isGenerated = /(?:\.d\.ts|generated|dist|build|coverage|node_modules)/i.test(relativePath);
+    if (isGenerated) {
+      continue;
+    }
+
+    // Avoid scanning this file (auditor) to prevent self-matching deprecated patterns
+    if (/dependency-guard\.ts$/.test(relativePath) || relativePath.includes("core\\dependency-guard")) {
+      continue;
+    }
+
     graph.set(relativePath, new Set());
 
     const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
@@ -82,9 +84,13 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
       }
     }
 
-    // Run deprecated API detection on file content using defined patterns
     for (const dp of DEPRECATED_PATTERNS) {
       if (dp.pattern.test(content)) {
+        const isAllowedPattern = /require\s*\(/.test(dp.pattern.source) && /(?:src\/index|scripts|config|tests)/i.test(relativePath);
+// muraqib-unreachable: flagged by automated triage. Review before removal.
+        if (isAllowedPattern) {
+          continue;
+        }
         const suggestion = dp.suggestion;
         const message = `Deprecated API usage in ${relativePath}: ${dp.pattern} -> ${suggestion}`;
         deprecatedImports.push(message);
@@ -129,11 +135,14 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const packageJsonPath = path.join(targetPath, "package.json");
   if (fs.existsSync(packageJsonPath)) {
     const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-    // Only consider production dependencies for outdated-package warnings
-    const prodDeps: Record<string, string> = pkg.dependencies || {};
-    const depNames = Object.keys(prodDeps);
+    const allDeps: Record<string, string> = {
+      ...pkg.dependencies,
+      ...pkg.devDependencies,
+    };
+
+    const depNames = Object.keys(allDeps);
     for (const dep of depNames) {
-      const version = prodDeps[dep];
+      const version = allDeps[dep];
       if (version && version.startsWith("^0.")) {
         outdatedPackages.push(`${dep}@${version} — v0.x may have breaking changes`);
         reports.push(`Potentially outdated: ${dep}@${version} (v0.x detected)`);

@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 /**
  * @file memory-guard.ts
  * @description فحص استهلاك الذاكرة اللحظي للعملية الحالية (Node process).
@@ -8,8 +7,7 @@
 import v8 from "v8"; 
 import os from "os";
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export interface MemoryAuditResult {
+export interface MemoryAuditResult { // muraqib-ignore-dead: auto-suppressed by script for MemoryAuditResult
   isOptimized: boolean;
   reports: string[];
   heapUsedMb: number;

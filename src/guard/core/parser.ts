@@ -5,7 +5,7 @@ function ensureSynchronous<T>(value: any, errorMessage: string): T {
     throw new Error(errorMessage);
   }
   return value as T;
-}
+} // muraqib-ignore-dead: auto-suppressed by script for parseWithDictionary
 
 // muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export function parseWithDictionary<TDict extends StandardSchemaDictionary>(

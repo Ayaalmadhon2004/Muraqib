@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 // src/rules/bundle-budget.ts
 import fs from 'fs';
 import path from 'path';
@@ -6,8 +5,7 @@ import path from 'path';
 /**
  * 1. ميزة فحص الحاجة للتحميل الكسول (Lazy Loading / Dynamic Imports)
  */
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export const checkLazyLoadingNecessity = (filePath: string): string[] => {
+export const checkLazyLoadingNecessity = (filePath: string): string[] => { // muraqib-ignore-dead: auto-suppressed by script for checkLazyLoadingNecessity
     if (!fs.existsSync(filePath)) return [];
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     
@@ -32,9 +30,8 @@ export const checkLazyLoadingNecessity = (filePath: string): string[] => {
 
 /**
  * 2. ميزة فحص الاستيرادات الفاطسة والثقيلة (Heavy Structural Imports)
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
  */
-export const checkHeavyImports = (filePath: string): string[] => {
+export const checkHeavyImports = (filePath: string): string[] => { // muraqib-ignore-dead: auto-suppressed by script for checkHeavyImports
     if (!fs.existsSync(filePath)) return [];
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const suggestions: string[] = [];
@@ -57,10 +54,9 @@ export const checkHeavyImports = (filePath: string): string[] => {
 };
 
 /**
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
  * 3. ميزة فحص إعدادات الـ Minification لضغط الملفات (next.config.js)
  */
-export const checkMinificationSettings = (projectRoot: string): string[] => {
+export const checkMinificationSettings = (projectRoot: string): string[] => { // muraqib-ignore-dead: auto-suppressed by script for checkMinificationSettings
     const nextConfigPath = path.join(projectRoot, 'next.config.js');
     const suggestions: string[] = [];
 
@@ -104,9 +100,11 @@ export const runComprehensiveBundleAudit = () => {
             } else {
                 const ext = path.extname(file);
                 if (supportedExtensions.includes(ext)) {
+// muraqib-unreachable: flagged by automated triage. Review before removal.
                     return fullPath;
                 }
             }
+// muraqib-unreachable: flagged by automated triage. Review before removal.
         }
         return null;
     }

@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 // src/core/standard.ts
 import { z } from "zod";
 import type { GuardOptions } from "./types.js";

@@ -1,8 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export type PackageManager = 'npm' | 'yarn' | 'pnpm';
+export type PackageManager = 'npm' | 'yarn' | 'pnpm'; // muraqib-ignore-dead: auto-suppressed by script for PackageManager
 export function detectProjectPackageManager(
   basePath: string = process.cwd()
 ): PackageManager {
@@ -15,7 +14,7 @@ export function detectProjectPackageManager(
 
   for (const [file, manager] of Object.entries(lockFiles)) {
     if (existsSync(join(basePath, file))) {
-      return manager;
+    return manager;
     }
   }
 

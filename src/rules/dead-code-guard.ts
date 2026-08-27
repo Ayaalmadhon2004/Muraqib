@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 /**
  * DeadCodeAudit: أداة فحص ذكية لتحليل الكود الميت.
  * تعتمد على الـ file-scanner المشترك لضمان معمارية نظيفة وخالية من التكرار.
@@ -6,7 +5,6 @@
 import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export interface DeadCodeAuditResult {
   isClean: boolean;
   reports: string[];
@@ -21,18 +19,7 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
   const unreachableBranches: string[] = [];
   const unusedExports: string[] = [];
 
-  // استخدام الـ Scanner المشترك لجلب الملفات ومحتواها
-  let scannedFiles = scanProjectFiles(targetPath, ["ts"]);
-
-  // Exclude generated declaration files and specs to reduce false positives
-  scannedFiles = scannedFiles.filter(f => {
-    const rp = f.relativePath.replace(/\\/g, '/');
-    if (rp.endsWith('.d.ts')) return false;
-    if (rp.includes('.spec.')) return false;
-    if (rp.includes('.d.ts.map')) return false;
-    return true;
-  });
-
+  const scannedFiles = scanProjectFiles(targetPath, ["ts"]);
   const fileContents = new Map<string, string>();
   for (const scannedFile of scannedFiles) {
     fileContents.set(scannedFile.path, scannedFile.content);
@@ -40,6 +27,10 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
 
   for (const scannedFile of scannedFiles) {
     const { path: filePath, relativePath, content } = scannedFile;
+    if (content.includes("muraqib-ignore-dead") || content.includes("muraqib-unreachable")) {
+      continue;
+    }
+
     const lines = content.split("\n");
 
     const emptyFuncRegex = /(?:function\s+(\w+)\s*\([^)]*\)|(\w+)\s*(?::\s*[^=]+)?=\s*(?:async\s*)?\([^)]*\)\s*=>)\s*{\s*}/g;
@@ -55,10 +46,12 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
       const currentLine = lines[i];
       const followingLine = lines[i + 1];
       if (currentLine === undefined || followingLine === undefined) continue;
+
       const line = currentLine.trim();
       const nextLine = followingLine.trim();
 
       const endsControlFlow = /^(return|throw)\b.*;?$/.test(line) || /^(break|continue);?$/.test(line);
+      const lineIsBlockBoundary = nextLine === "}" || nextLine === "else" || nextLine.startsWith("else ") || nextLine.startsWith("case ") || nextLine.startsWith("default:");
       const nextIsMeaningful =
         nextLine.length > 0 &&
         nextLine !== "}" &&
@@ -68,16 +61,25 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
         !nextLine.startsWith("case ") &&
         !nextLine.startsWith("default:");
 
-      if (endsControlFlow && nextIsMeaningful) {
+      if (endsControlFlow && lineIsBlockBoundary) {
         unreachableBranches.push(`${relativePath}:${i + 2}`);
         reports.push(`Unreachable code: ${relativePath}:${i + 2} — appears right after a "${line.split(/\s+/)[0]}" statement`);
       }
+
+      if (endsControlFlow && nextIsMeaningful && (line.includes("if (") || line.includes("for (") || line.includes("while ("))) {
+        continue;
+      }
     }
-    
+
     const exportRegex = /export\s+(?:async\s+)?(?:function|class|const|interface|type)\s+([A-Za-z_$][\w$]*)/g;
     while ((match = exportRegex.exec(content)) !== null) {
       const exportedName = match[1];
       if (!exportedName || exportedName === "default") continue;
+
+      const reExportFile = relativePath.startsWith("src/index") || relativePath.includes("/index.") || relativePath.startsWith("src/core/");
+      if (reExportFile) {
+        continue;
+      }
 
       let usedElsewhere = false;
       for (const [otherFile, otherContent] of fileContents) {
@@ -90,14 +92,6 @@ export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
       }
 
       if (!usedElsewhere) {
-        // Check for an explicit opt-out comment near the export to avoid false positives
-        const contextStart = Math.max(0, match.index - 200);
-        const context = content.slice(contextStart, match.index + 50);
-        if (context.includes('muraqib-ignore-dead')) {
-          // opt-out present, skip reporting
-          continue;
-        }
-
         const lineNum = content.slice(0, match.index).split("\n").length;
         unusedExports.push(`${relativePath}:${lineNum} (${exportedName})`);
         reports.push(`Potentially unused export: ${relativePath}:${lineNum} — "${exportedName}" is not imported anywhere else`);

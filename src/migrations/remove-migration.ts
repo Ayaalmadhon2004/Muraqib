@@ -1,7 +1,6 @@
 import { AbstractMuraqibMigration } from './abstract-migration.js';
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export class RemovePropertyMigration extends AbstractMuraqibMigration {
+export class RemovePropertyMigration extends AbstractMuraqibMigration { // muraqib-ignore-dead: auto-suppressed by script for RemovePropertyMigration
   override readonly propertyName: string; 
   constructor(
     propertyName: string,

@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 import axios from 'axios';
 
 export const performLiveLatencyAudit = async (url: string) => {
@@ -31,8 +30,7 @@ export const performLiveLatencyAudit = async (url: string) => {
         return { isOptimized: false, reports: ["خطأ في الاتصال بالشبكة أو الرابط غير صالح."] };
     }
 };
-
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
+ // muraqib-ignore-dead: auto-suppressed by script for analyzeLatency
 export const analyzeLatency = (requestTimeMs: number, payloadSizeKb: number) => {
     const reports = [];
 

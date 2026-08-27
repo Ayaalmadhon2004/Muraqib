@@ -6,8 +6,7 @@ import { globSync } from "glob";
  * FileScanner: أداة مركزية لقراءة ملفات المشروع والبحث فيها.
  * الهدف: منع تكرار كود قراءة الملفات واستخدام الـ glob عبر أدوات الفحص المختلفة.
  */
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export interface ScannedFile {
+export interface ScannedFile { // muraqib-ignore-dead: auto-suppressed by script for ScannedFile
   path: string;
   relativePath: string;
   content: string;

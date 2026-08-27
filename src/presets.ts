@@ -20,15 +20,13 @@ export interface NeonVercelEnv extends VercelEnv {
   PGHOST_UNPOOLED?: string;
 }
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export interface SupabaseVercelEnv extends VercelEnv {
+export interface SupabaseVercelEnv extends VercelEnv { // muraqib-ignore-dead: auto-suppressed by script for SupabaseVercelEnv
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 }
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 
-export interface RailwayEnv {
+export interface RailwayEnv { // muraqib-ignore-dead: auto-suppressed by script for RailwayEnv
   RAILWAY_ENVIRONMENT_NAME?: string;
   RAILWAY_ENVIRONMENT_ID?: string;
   RAILWAY_PROJECT_NAME?: string;

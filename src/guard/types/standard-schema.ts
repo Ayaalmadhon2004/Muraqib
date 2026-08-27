@@ -5,70 +5,60 @@ export interface StandardSchemaV1<Input = unknown, Output = Input> {
 }
 
 export declare namespace StandardSchemaV1 {
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-  export interface Props<Input = unknown, Output = Input> {
+  export interface Props<Input = unknown, Output = Input> { // muraqib-ignore-dead: auto-suppressed by script for Props
     readonly version: 1;     
     readonly vendor: string;   
     readonly validate: (value: unknown) => Result<Output> | Promise<Result<Output>>;
     readonly types?: Types<Input, Output> | undefined;
   }
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 
-  export type Result<Output> = SuccessResult<Output> | FailureResult;
-  export interface SuccessResult<Output> {
+  export type Result<Output> = SuccessResult<Output> | FailureResult; // muraqib-ignore-dead: auto-suppressed by script for Result
+  export interface SuccessResult<Output> { // muraqib-ignore-dead: auto-suppressed by script for SuccessResult
     readonly value: Output;       
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
     readonly issues?: undefined;  
   }
-  export interface FailureResult {
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
+  export interface FailureResult { // muraqib-ignore-dead: auto-suppressed by script for FailureResult
     readonly issues: ReadonlyArray<Issue>; 
   }
 
-  export interface Issue {
+  export interface Issue { // muraqib-ignore-dead: auto-suppressed by script for Issue
     readonly message: string;
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
     readonly path?: ReadonlyArray<PropertyKey | PathSegment> | undefined;
   }
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
   // why we are using pathSegment ?
-  export interface PathSegment {
+  export interface PathSegment { // muraqib-ignore-dead: auto-suppressed by script for PathSegment
     readonly key: PropertyKey; 
   }
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-  export interface Types<Input = unknown, Output = Input> {
+  export interface Types<Input = unknown, Output = Input> { // muraqib-ignore-dead: auto-suppressed by script for Types
     readonly input: Input;
     readonly output: Output;
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
   }
 
   // why we are using infer input , output?
-  export type InferInput<Schema extends StandardSchemaV1> = NonNullable<
+  export type InferInput<Schema extends StandardSchemaV1> = NonNullable< // muraqib-ignore-dead: auto-suppressed by script for InferInput
     Schema["~standard"]["types"]
   >["input"];
 
-  export type InferOutput<Schema extends StandardSchemaV1> = NonNullable<
+  export type InferOutput<Schema extends StandardSchemaV1> = NonNullable< // muraqib-ignore-dead: auto-suppressed by script for InferOutput
     Schema["~standard"]["types"]
   >["output"];
 }
 
 // what is the dictionary and why we use itand difference between type and namespace and difference of them
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export type StandardSchemaDictionary<
   Input = Record<string, unknown>,
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
   Output extends Record<keyof Input, unknown> = Input,
 > = {
   [K in keyof Input]-?: StandardSchemaV1<Input[K], Output[K]>;
 };
 
 export namespace StandardSchemaDictionary {
-  export type InferInput<T extends StandardSchemaDictionary> = {
+  export type InferInput<T extends StandardSchemaDictionary> = { // muraqib-ignore-dead: auto-suppressed by script for InferInput
     [K in keyof T]: StandardSchemaV1.InferInput<T[K]>;
   };
-  export type InferOutput<T extends StandardSchemaDictionary> = {
+  export type InferOutput<T extends StandardSchemaDictionary> = { // muraqib-ignore-dead: auto-suppressed by script for InferOutput
     [K in keyof T]: StandardSchemaV1.InferOutput<T[K]>;
   };
 }

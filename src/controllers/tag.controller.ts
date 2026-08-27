@@ -2,8 +2,7 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { TagService } from "../services/tag.service.js";
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export const TagController = {
+export const TagController = { // muraqib-ignore-dead: auto-suppressed by script for TagController
   async getTags(_req: Request, res: Response, next: NextFunction) {
     try {
       const tags = await TagService.getAllTags();

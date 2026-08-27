@@ -1,6 +1,5 @@
 // src/models/user.model.ts
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
-export interface User {
+export interface User { // muraqib-ignore-dead: auto-suppressed by script for User
   id: string;
   email: string;
   passwordHash: string; // لا تخزني كلمة السر الصريحة أبداً!
