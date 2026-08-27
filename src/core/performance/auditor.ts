@@ -1,3 +1,4 @@
+// muraqib-unreachable: flagged by automated triage. Review before removal.
 import { runtimeCacheSchema } from "../../rules/cache-guard.js";
 
 export const runPerformanceAudit = () => {

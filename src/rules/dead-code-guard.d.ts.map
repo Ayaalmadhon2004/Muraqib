@@ -1,0 +1,1 @@
+{"version":3,"file":"dead-code-guard.d.ts","sourceRoot":"","sources":["dead-code-guard.ts"],"names":[],"mappings":"AAOA,MAAM,WAAW,mBAAmB;IAClC,OAAO,EAAE,OAAO,CAAC;IACjB,OAAO,EAAE,MAAM,EAAE,CAAC;IAClB,cAAc,EAAE,MAAM,EAAE,CAAC;IACzB,mBAAmB,EAAE,MAAM,EAAE,CAAC;IAC9B,aAAa,EAAE,MAAM,EAAE,CAAC;CACzB;AAED,wBAAgB,oBAAoB,CAAC,UAAU,EAAE,MAAM,GAAG,mBAAmB,CAgF5E"}
