@@ -38,7 +38,7 @@ app.get("/", (req, res) => {
     return;
   }
 
-  // muraqib-unreachable: flagged by automated triage. Review before removal.
+  // fallback health response for environments without index.html
   res.json({ status: "ok", message: "Muraqib server running" });
 });
 
