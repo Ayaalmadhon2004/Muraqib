@@ -24,6 +24,10 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
 
   for (const scannedFile of scannedFiles) {
     const { relativePath, content } = scannedFile;
+    // Skip scanning the guard itself to avoid self-matching callback patterns
+    if (/core\\async-guard\.ts$/.test(relativePath) || relativePath.includes('core\\security-guard')) {
+      continue;
+    }
     const lines = content.split("\n");
 
     for (let i = 0; i < lines.length; i++) {

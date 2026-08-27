@@ -780,23 +780,29 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
     upgrade: args.includes("--upgrade"),                       // NEW
   };
 
-  runAudit(opts).then((res) => {
-    const failed =
-      !res.env.ok ||
-      !res.images.ok ||
-      !res.bundle.ok ||
-      !res.network.ok ||
-      !res.memory.ok ||
-      !res.security.ok ||
-      !res.deadCode.ok ||
-      !res.dependencies.ok ||
-      !res.async.ok ||
-      !res.config.ok ||
-      !res.performance.ok ||
-      !res.optimizer.ok ||
-      !res.renderBlocking.ok;
-    process.exit(failed ? 1 : 0);
-  });
+  (async () => {
+    try {
+      const res = await runAudit(opts);
+      const failed =
+        !res.env.ok ||
+        !res.images.ok ||
+        !res.bundle.ok ||
+        !res.network.ok ||
+        !res.memory.ok ||
+        !res.security.ok ||
+        !res.deadCode.ok ||
+        !res.dependencies.ok ||
+        !res.async.ok ||
+        !res.config.ok ||
+        !res.performance.ok ||
+        !res.optimizer.ok ||
+        !res.renderBlocking.ok;
+      process.exit(failed ? 1 : 0);
+    } catch (err: any) {
+      console.error(err);
+      process.exit(1);
+    }
+  })();
 // muraqib-unreachable: flagged by automated triage. Review before removal.
 }
 
