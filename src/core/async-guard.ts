@@ -20,12 +20,13 @@ export function performAsyncAudit(targetPath: string): AsyncAuditResult {
   const callbackHell: string[] = [];
   const floatingPromises: string[] = [];
 
-  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+  // Only scan TypeScript sources to avoid false-positives from compiled JS artifacts.
+  const scannedFiles = scanProjectFiles(targetPath, ["ts"]);
 
   for (const scannedFile of scannedFiles) {
     const { relativePath, content } = scannedFile;
-    // Skip scanning the guard itself to avoid self-matching callback patterns
-    if (/core\\async-guard\.ts$/.test(relativePath) || relativePath.includes('core\\security-guard')) {
+    // Skip scanning the guard and related guards themselves to avoid self-matching callback patterns
+    if (/core[\\\/]async-guard/.test(relativePath) || /core[\\\/]security-guard/.test(relativePath)) {
       continue;
     }
     const lines = content.split("\n");
