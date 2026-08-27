@@ -216,9 +216,27 @@ export interface AuditResult {
 
 export async function runAudit(options: AuditOptions = {}): Promise<AuditResult> {
   const targetPath = options.targetPath || process.cwd();
-  const latencyUrl = options.latencyUrl || "https://jsonplaceholder.typicode.com/comments";
+  let latencyUrl = options.latencyUrl || "https://jsonplaceholder.typicode.com/comments";
   const securityUrl = options.securityUrl || latencyUrl;
   const silent = options.silent || false;
+
+  // Prefer a local audit target when available (keeps CI & local runs stable)
+  if (!options.latencyUrl) {
+    try {
+      // prefer localhost:3000 if reachable quickly
+      // use global fetch if available (Node 18+)
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const signal = controller ? controller.signal : undefined as any;
+      if (controller) setTimeout(() => controller.abort(), 800);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res = await (globalThis as any).fetch?.("http://localhost:3000", { method: "HEAD", signal });
+      if (res && res.ok) {
+        latencyUrl = "http://localhost:3000";
+      }
+    } catch (e) {
+      // ignore — fall back to remote default
+    }
+  }
 
   if (!silent) {
     console.log(`
