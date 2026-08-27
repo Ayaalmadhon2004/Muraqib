@@ -49,7 +49,11 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
     const isGenerated = /(?:\.d\.ts|generated|dist|build|coverage|node_modules)/i.test(relativePath);
     if (isGenerated) {
       continue;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
+    }
+
+    // Avoid scanning this file (auditor) to prevent self-matching deprecated patterns
+    if (/dependency-guard\.ts$/.test(relativePath) || relativePath.includes("core\\dependency-guard")) {
+      continue;
     }
 
     graph.set(relativePath, new Set());
