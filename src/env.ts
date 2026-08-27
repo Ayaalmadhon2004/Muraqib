@@ -67,7 +67,6 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
             pendingKey = null;
           }
           continue;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
         }
 
         // inline comment: نفصل على أول # بس لو مش داخل quotes
@@ -130,7 +129,6 @@ export function loadEnv(options: LoadEnvOptions = {}): Record<string, string> {
   process.env.STATIC_ASSETS_CACHE_MAX_AGE = process.env.STATIC_ASSETS_CACHE_MAX_AGE || "86400";
   process.env.ENABLE_SERVER_COMPRESSION = process.env.ENABLE_SERVER_COMPRESSION || "true";
 
-// muraqib-unreachable: flagged by automated triage. Review before removal.
   return loaded;
 }
 
@@ -141,20 +139,16 @@ function findCommentIndex(str: string): number {
   for (let i = 0; i < str.length; i++) {
     const ch = str[i];
     if (escaped) {
-// muraqib-unreachable: flagged by automated triage. Review before removal.
       escaped = false;
       continue;
     }
-// muraqib-unreachable: flagged by automated triage. Review before removal.
     if (ch === "\\") {
       escaped = true;
       continue;
     }
     if (ch === '"' || ch === "'") {
-// muraqib-unreachable: flagged by automated triage. Review before removal.
       if (inQuotes === ch) inQuotes = null;
       else if (!inQuotes) inQuotes = ch;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
     } else if (ch === "#" && !inQuotes) {
       return i;
     }

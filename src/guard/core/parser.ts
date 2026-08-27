@@ -3,9 +3,7 @@ import type { StandardSchemaDictionary, StandardSchemaV1 } from "../types/standa
 function ensureSynchronous<T>(value: any, errorMessage: string): T {
   if (value instanceof Promise || (value && typeof value.then === "function")) { 
     throw new Error(errorMessage);
-// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
-// muraqib-unreachable: flagged by automated triage. Review before removal.
   return value as T;
 } // muraqib-ignore-dead: auto-suppressed by script for parseWithDictionary
 
@@ -21,7 +19,6 @@ export function parseWithDictionary<TDict extends StandardSchemaDictionary>(
   for (const key in dictionary) {
     if (Object.prototype.hasOwnProperty.call(dictionary, key)) {
       const schema = dictionary[key];
-// muraqib-unreachable: flagged by automated triage. Review before removal.
       if (!schema) {
         continue; 
       }
@@ -44,10 +41,8 @@ export function parseWithDictionary<TDict extends StandardSchemaDictionary>(
       }
     }
   }
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 
   if (issues.length > 0) {
-// muraqib-unreachable: flagged by automated triage. Review before removal.
     return { issues };
   }
 
