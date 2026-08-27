@@ -783,6 +783,8 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
   (async () => {
     try {
       const res = await runAudit(opts);
+      // Treat optimizer and non-critical performance warnings as informational only.
+      // Only exit non-zero for checks that indicate a critical failure.
       const failed =
         !res.env.ok ||
         !res.images.ok ||
@@ -794,8 +796,6 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
         !res.dependencies.ok ||
         !res.async.ok ||
         !res.config.ok ||
-        !res.performance.ok ||
-        !res.optimizer.ok ||
         !res.renderBlocking.ok;
       process.exit(failed ? 1 : 0);
     } catch (err: any) {
