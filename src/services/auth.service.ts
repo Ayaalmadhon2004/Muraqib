@@ -16,8 +16,7 @@ export class AuthService {
       });
       return user;
     } catch (error) {
-      throw new HttpException(422, { errors: { email: ['could not create user'] } });
-// muraqib-unreachable: flagged by automated triage. Review before removal.
+    throw new HttpException(422, { errors: { email: ['could not create user'] } });
     }
   }
 }
