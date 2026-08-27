@@ -216,26 +216,22 @@ export interface AuditResult {
 
 export async function runAudit(options: AuditOptions = {}): Promise<AuditResult> {
   const targetPath = options.targetPath || process.cwd();
-  let latencyUrl = options.latencyUrl || "https://jsonplaceholder.typicode.com/comments";
+  let latencyUrl = options.latencyUrl || "http://localhost:3000";
   const securityUrl = options.securityUrl || latencyUrl;
   const silent = options.silent || false;
 
-  // Prefer a local audit target when available (keeps CI & local runs stable)
-  if (!options.latencyUrl) {
-    try {
-      // prefer localhost:3000 if reachable quickly
-      // use global fetch if available (Node 18+)
-      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const signal = controller ? controller.signal : undefined as any;
-      if (controller) setTimeout(() => controller.abort(), 800);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res = await (globalThis as any).fetch?.("http://localhost:3000", { method: "HEAD", signal });
-      if (res && res.ok) {
-        latencyUrl = "http://localhost:3000";
-      }
-    } catch (e) {
-      // ignore — fall back to remote default
+  // If the selected latency URL isn't reachable, fall back to a stable remote endpoint
+  try {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const signal = controller ? controller.signal : undefined as any;
+    if (controller) setTimeout(() => controller.abort(), 800);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await (globalThis as any).fetch?.(latencyUrl, { method: "HEAD", signal });
+    if (!res || !res.ok) {
+      latencyUrl = "https://jsonplaceholder.typicode.com/comments";
     }
+  } catch (e) {
+    latencyUrl = "https://jsonplaceholder.typicode.com/comments";
   }
 
   if (!silent) {
