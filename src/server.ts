@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 import express from "express";
 import compression from "compression";
 import path from "path";
@@ -6,39 +5,30 @@ import fs from "fs";
 import { performanceMonitor } from "./middleware/performance.middleware.js";
 import { applySecurityMiddleware } from "./middleware/security.middleware.js";
 
-// Ensure reasonable defaults for development so audits can run without a local .env
 process.env.PORT = process.env.PORT || "3000";
-process.env.STATIC_ASSETS_CACHE_MAX_AGE = process.env.STATIC_ASSETS_CACHE_MAX_AGE || "86400"; // seconds
+process.env.STATIC_ASSETS_CACHE_MAX_AGE = process.env.STATIC_ASSETS_CACHE_MAX_AGE || "86400";
 process.env.ENABLE_SERVER_COMPRESSION = process.env.ENABLE_SERVER_COMPRESSION || "true";
 
 const app = express();
 app.use(express.json());
 
-// Compression
 if (process.env.ENABLE_SERVER_COMPRESSION === "true") {
   app.use(compression());
 }
 
-// Security middleware (helmet + headers)
 applySecurityMiddleware(app as any);
-
-// Performance monitor
 app.use(performanceMonitor as any);
 
-// Serve static files from public/ with configured cache control
 const publicDir = path.join(process.cwd(), "public");
 const cacheSeconds = Number(process.env.STATIC_ASSETS_CACHE_MAX_AGE) || 86400;
 app.use(express.static(publicDir, { maxAge: cacheSeconds * 1000 }));
 
-// Basic health route
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   const indexPath = path.join(publicDir, "index.html");
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
     return;
   }
-
-  // fallback health response for environments without index.html
   res.json({ status: "ok", message: "Muraqib server running" });
 });
 
