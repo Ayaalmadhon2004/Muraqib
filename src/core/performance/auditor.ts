@@ -1,7 +1,6 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 import { runtimeCacheSchema } from "../../rules/cache-guard.js";
 
-export const runPerformanceAudit = () => {
+export const runPerformanceAudit = (targetPath?: string) => {
   console.log("⚡ [Muraqib]: Starting Performance Audit Suite...");
   const result = runtimeCacheSchema.safeParse(process.env);
   if (!result.success) {
@@ -9,5 +8,9 @@ export const runPerformanceAudit = () => {
     process.exit(1);
   }
   console.log("✅ [Muraqib]: Performance Audit Passed.");
-  return result.data;
+  return {
+    isOptimized: true,
+    reports: [] as string[],
+    ...result.data
+  };
 };
