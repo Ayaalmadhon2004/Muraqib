@@ -1,6 +1,6 @@
 import { runtimeCacheSchema } from "../../rules/cache-guard.js";
 
-export const runPerformanceAudit = (targetPath?: string) => {
+export const runPerformanceAudit = (_targetPath?: string) => {
   console.log("⚡ [Muraqib]: Starting Performance Audit Suite...");
   const result = runtimeCacheSchema.safeParse(process.env);
   if (!result.success) {

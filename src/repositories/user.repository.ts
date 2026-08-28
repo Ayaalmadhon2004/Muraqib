@@ -7,6 +7,7 @@ export interface User {
 export interface UserInput {
   email: string;
   name?: string;
+  password?:string;
 }
 
 export interface UserRepository {

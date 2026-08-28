@@ -1,7 +1,7 @@
 import { z } from "zod";
 import fs from "fs";
 import path from "path";
-import {  createEnvWithPresets, loadEnv, safeCreateEnv } from "./env.js";
+import { createEnvWithPresets, loadEnv, safeCreateEnv } from "./env.js";
 import { cachePerformanceSchema } from "./rules/cache-guard.js";
 import { runImagePerformanceAudit } from "./core/performance/image-guard.js";
 import { runComprehensiveBundleAudit } from "./rules/bundle-budget.js";
@@ -20,7 +20,7 @@ export { createEnv, createEnvWithPresets, loadEnv, safeCreateEnv } from "./env.j
 export * from "./core/types.js";
 export * from "./core/standard.js";
 
-export const auditPerformance = (resourceCount: number, protocol: string, cookiesSize: number) => {
+export const auditPerformance = (_resourceCount: number, protocol: string, cookiesSize: number) => {
   const findings: string[] = [];
 
   if (cookiesSize > 2 * 1024) { 
@@ -601,7 +601,7 @@ ${CYAN}${BOLD}╔═════════════════════
     result.optimizer.ok &&
     result.renderBlocking.ok;
 
-  const rows = [
+  const rows: [string, string, number][] = [
     ["Environment", result.env.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.env.errors.length],
     ["Images", result.images.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.images.errors.length],
     ["Bundle", result.bundle.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.bundle.errors.length],
@@ -760,5 +760,11 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
 
 function getArg(args: string[], flag: string): string | undefined {
   const i = args.indexOf(flag);
-  return i >= 0 && args[i + 1] && !args[i + 1].startsWith("-") ? args[i + 1] : undefined;
+  if (i >= 0) {
+    const next = args[i + 1];
+    if (next !== undefined && !next.startsWith("-")) {
+      return next;
+    }
+  }
+  return undefined;
 }
