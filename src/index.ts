@@ -13,7 +13,6 @@ import { performDependencyAudit } from "./core/dependency-guard.js";
 import { performAsyncAudit } from "./core/async-guard.js";
 import { performConfigAudit } from "./core/config-guard.js";
 
-// ── NEW: previously dead code now wired in ──
 import { runPerformanceAudit } from "./core/performance/auditor.js";
 import { runMuraqibUpgradeOrchestrator } from "./core/orchestrator.js";
 
@@ -21,12 +20,8 @@ export { createEnv, createEnvWithPresets, loadEnv, safeCreateEnv } from "./env.j
 export * from "./core/types.js";
 export * from "./core/standard.js";
 
-// =========================================================================
-// Inline optimizer + render-blocking wrappers (fixed dead-code wiring)
-// =========================================================================
-
-export const auditPerformance = (resourceCount: number, protocol: string, cookiesSize: number) => { // muraqib-ignore-dead: auto-suppressed by script for auditPerformance
-  const findings = [];
+export const auditPerformance = (resourceCount: number, protocol: string, cookiesSize: number) => {
+  const findings: string[] = [];
 
   if (cookiesSize > 2 * 1024) { 
     findings.push("تحذير: حجم الكوكيز يتجاوز 2KB. كل طلب سيتم تحميله ببيانات غير ضرورية.");
@@ -41,10 +36,10 @@ export const auditPerformance = (resourceCount: number, protocol: string, cookie
   return findings;
 };
 
-export const analyzeRenderBlocking = (htmlContent: string) => { // muraqib-ignore-dead: auto-suppressed by script for analyzeRenderBlocking
+export const analyzeRenderBlocking = (htmlContent: string) => {
   const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
 
-  if (!headMatch) return { status: 'ok', isOptimized: true, blockingScripts: 0, blockingStyles: 0, message: 'لم يتم العثور على <head>' };
+  if (!headMatch) return { status: 'ok' as const, isOptimized: true, blockingScripts: 0, blockingStyles: 0, message: 'لم يتم العثور على <head>' };
 
   const headContent = headMatch[0];
   const blockingScripts = (headContent.match(/<script(?!\s+(?:defer|async))[^>]*>/gi) || []).length;
@@ -56,7 +51,7 @@ export const analyzeRenderBlocking = (htmlContent: string) => { // muraqib-ignor
     : 'ممتاز، لا توجد سكريبتات تحجب الرندرة في الـ head.';
 
   return {
-    status: isOptimized ? 'ok' : 'issues',
+    status: isOptimized ? 'ok' as const : 'issues' as const,
     blockingScripts,
     blockingStyles,
     isOptimized,
@@ -73,7 +68,6 @@ function runOptimizerAudit(targetPath: string) {
     }
   } catch { /* ignore missing HTML */ }
 
-  // Count static resources (naive recursive walk, skipping node_modules & hidden)
   let resourceCount = 0;
   try {
     const countResources = (dir: string): number => {
@@ -96,11 +90,9 @@ function runOptimizerAudit(targetPath: string) {
     resourceCount = countResources(targetPath);
   } catch { /* ignore */ }
 
-  // Detect protocol hint from HTML or default to HTTP/2
   const protocol =
     /http\/2|h2|HTTP\/2/i.test(htmlContent) ? "HTTP/2" : "HTTP/1.1";
 
-  // Naive cookie-size heuristic
   const cookiesSize = /cookie|Set-Cookie/i.test(htmlContent) ? 3 * 1024 : 512;
 
   const findings = auditPerformance(resourceCount, protocol, cookiesSize);
@@ -123,8 +115,7 @@ function runRenderBlockingAudit(targetPath: string) {
   const result = analyzeRenderBlocking(htmlContent);
 
   if (result.status === "ok") {
-    return { isOptimized: true, reports: [] };
-// muraqib-unreachable: flagged by automated triage. Review before removal.
+    return { isOptimized: true, reports: [] as string[] };
   }
 
   const reports: string[] = [];
@@ -143,9 +134,6 @@ function runRenderBlockingAudit(targetPath: string) {
   };
 }
 
-// =========================================================================
-// Output helpers
-// =========================================================================
 const RESET = "\x1b[0m";
 const RED = "\x1b[31m";
 const GREEN = "\x1b[32m";
@@ -174,44 +162,41 @@ function box(lines: string[]) {
   console.log(`  ${DIM}└${"─".repeat(width + 2)}┘${RESET}`);
 }
 
-// =========================================================================
-// Audit Runner
-// ========================================================================= // muraqib-ignore-dead: auto-suppressed by script for AuditOptions
 export interface AuditOptions {
-  targetPath?: string;
-  latencyUrl?: string;
-  securityUrl?: string;
-  skipEnv?: boolean;
-  skipMemory?: boolean;
-  skipSecurity?: boolean;
-  skipDeadCode?: boolean;
-  skipDependencies?: boolean;
-  skipAsync?: boolean;
-  skipConfig?: boolean;
-  skipPerformance?: boolean;      // NEW
-  skipOptimizer?: boolean;        // NEW
-  skipRenderBlocking?: boolean;   // NEW
-  silent?: boolean;
-  schedule?: string;
-  presets?: string[];
-  safe?: boolean;
-  upgrade?: boolean;              // NEW
+  targetPath?: string | undefined;
+  latencyUrl?: string | undefined;
+  securityUrl?: string | undefined;
+  skipEnv?: boolean | undefined;
+  skipMemory?: boolean | undefined;
+  skipSecurity?: boolean | undefined;
+  skipDeadCode?: boolean | undefined;
+  skipDependencies?: boolean | undefined;
+  skipAsync?: boolean | undefined;
+  skipConfig?: boolean | undefined;
+  skipPerformance?: boolean | undefined;
+  skipOptimizer?: boolean | undefined;
+  skipRenderBlocking?: boolean | undefined;
+  silent?: boolean | undefined;
+  schedule?: string | undefined;
+  presets?: string[] | undefined;
+  safe?: boolean | undefined;
+  upgrade?: boolean | undefined;
 }
- // muraqib-ignore-dead: auto-suppressed by script for AuditResult
+
 export interface AuditResult {
   env: { ok: boolean; errors: string[] };
   images: { ok: boolean; errors: string[] };
   bundle: { ok: boolean; errors: string[] };
   network: { ok: boolean; errors: string[] };
   memory: { ok: boolean; errors: string[] };
-  security: { ok: boolean; errors: string[]; score?: number };
+  security: { ok: boolean; errors: string[]; score?: number | undefined };
   deadCode: { ok: boolean; errors: string[] };
   dependencies: { ok: boolean; errors: string[] };
   async: { ok: boolean; errors: string[] };
   config: { ok: boolean; errors: string[] };
-  performance: { ok: boolean; errors: string[] };    // NEW
-  optimizer: { ok: boolean; errors: string[] };      // NEW
-  renderBlocking: { ok: boolean; errors: string[] };  // NEW
+  performance: { ok: boolean; errors: string[] };
+  optimizer: { ok: boolean; errors: string[] };
+  renderBlocking: { ok: boolean; errors: string[] };
 }
 
 export async function runAudit(options: AuditOptions = {}): Promise<AuditResult> {
@@ -220,12 +205,10 @@ export async function runAudit(options: AuditOptions = {}): Promise<AuditResult>
   const securityUrl = options.securityUrl || latencyUrl;
   const silent = options.silent || false;
 
-  // If the selected latency URL isn't reachable, fall back to a stable remote endpoint
   try {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const signal = controller ? controller.signal : undefined as any;
     if (controller) setTimeout(() => controller.abort(), 800);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await (globalThis as any).fetch?.(latencyUrl, { method: "HEAD", signal });
     if (!res || !res.ok) {
       latencyUrl = "https://jsonplaceholder.typicode.com/comments";
@@ -254,12 +237,11 @@ ${CYAN}${BOLD}╔═════════════════════
     dependencies: { ok: true, errors: [] },
     async: { ok: true, errors: [] },
     config: { ok: true, errors: [] },
-    performance: { ok: true, errors: [] },    // NEW
-    optimizer: { ok: true, errors: [] },      // NEW
-    renderBlocking: { ok: true, errors: [] },// NEW
+    performance: { ok: true, errors: [] },
+    optimizer: { ok: true, errors: [] },
+    renderBlocking: { ok: true, errors: [] },
   };
 
-  // ── Images ──
   section("1️⃣  STATIC ASSETS (Images)");
   try {
     const originalWarn = console.warn;
@@ -289,7 +271,6 @@ ${CYAN}${BOLD}╔═════════════════════
     log("Image audit", "fail", err.message);
   }
 
-  // ── Bundle ──
   section("2️⃣  BUNDLE SIZE");
   try {
     runComprehensiveBundleAudit(targetPath);
@@ -300,7 +281,6 @@ ${CYAN}${BOLD}╔═════════════════════
     log("Bundle audit", "fail", err.message);
   }
 
-  // ── Network ──
   section("3️⃣  NETWORK LATENCY");
   try {
     const net = await performLiveLatencyAudit(latencyUrl);
@@ -311,9 +291,9 @@ ${CYAN}${BOLD}╔═════════════════════
       for (const report of net.reports) {
         console.log(`    ${YELLOW}•${RESET} ${report}`);
       }
-      console.log(`    ${DIM}Measured: ${net.requestTimeMs || "N/A"}ms | Payload: ${net.payloadSizeKb || "N/A"} KB${RESET}`);
+      console.log(`    ${DIM}Measured: ${net.requestTimeMs}ms | Payload: ${net.payloadSizeKb.toFixed(2)} KB${RESET}`);
     } else {
-      log("Latency check", "pass", `${net.requestTimeMs}ms / ${net.payloadSizeKb} KB`);
+      log("Latency check", "pass", `${net.requestTimeMs}ms / ${net.payloadSizeKb.toFixed(2)} KB`);
     }
   } catch (err: any) {
     result.network.ok = false;
@@ -321,7 +301,6 @@ ${CYAN}${BOLD}╔═════════════════════
     log("Latency check", "fail", err.message || "Request failed");
   }
 
-  // ── Memory ──
   if (!options.skipMemory) {
     section("4️⃣  MEMORY USAGE");
     try {
@@ -344,7 +323,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── Security ──
   if (!options.skipSecurity) {
     section("5️⃣  SECURITY HEADERS");
     try {
@@ -367,7 +345,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── Dead Code ──
   if (!options.skipDeadCode) {
     section("6️⃣  DEAD CODE DETECTION");
     try {
@@ -395,7 +372,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── Dependencies ──
   if (!options.skipDependencies) {
     section("7️⃣  DEPENDENCY ANALYSIS");
     try {
@@ -426,7 +402,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── Async ──
   if (!options.skipAsync) {
     section("8️⃣  ASYNC PATTERNS");
     try {
@@ -454,7 +429,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── Config ──
   if (!options.skipConfig) {
     section("9️⃣  CONFIGURATION VALIDATION");
     try {
@@ -487,13 +461,11 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── Environment ──
   if (!options.skipEnv) {
     section("🔟 ENVIRONMENT VARIABLES");
     try {
       const schema = {
         DATABASE_URL: z.string().url().optional(),
-        // Allow missing PORT by providing a sensible default for local/dev runs
         PORT: z
           .string()
           .regex(/^\d+$/, "PORT must be a numeric string")
@@ -502,19 +474,22 @@ ${CYAN}${BOLD}╔═════════════════════
         ...cachePerformanceSchema,
       };
 
+      const envOptions: any = {
+        server: schema,
+        runtimeEnv: process.env,
+        isServer: true,
+        silent: true,
+      };
+      
+      if (options.presets) envOptions.presets = options.presets;
+      if (options.schedule) envOptions.schedule = options.schedule;
+
       if (options.safe) {
-        const envResult = safeCreateEnv({
-          server: schema,
-          runtimeEnv: process.env,
-          presets: options.presets as any,
-          isServer: true,
-          schedule: options.schedule,
-          silent: true,
-        });
+        const envResult = safeCreateEnv(envOptions);
 
         if (!envResult.success) {
           result.env.ok = false;
-          result.env.errors = envResult.error.map((e) => `${e.path}: ${e.message}`);
+          result.env.errors = envResult.error.map((e: any) => `${e.path}: ${e.message}`);
           log("Env validation", "fail", `${envResult.error.length} violation(s)`);
           for (const err of envResult.error) {
             console.log(`    ${RED}•${RESET} ${err.path}: ${err.message}`);
@@ -523,13 +498,7 @@ ${CYAN}${BOLD}╔═════════════════════
           log("Env validation", "pass", "All variables valid");
         }
       } else {
-        createEnvWithPresets(schema, {
-          runtimeEnv: process.env,
-          presets: options.presets as any,
-          isServer: true,
-          schedule: options.schedule,
-          silent: true,
-        });
+        createEnvWithPresets(schema, envOptions);
         log("Env validation", "pass", "All variables valid");
       }
     } catch (err: any) {
@@ -543,11 +512,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // NEW SECTIONS — previously dead code now wired into the audit pipeline
-  // ═══════════════════════════════════════════════════════════════════════
-
-  // ── 11. Performance Cache Audit ──
   if (!options.skipPerformance) {
     section("1️⃣1️⃣  PERFORMANCE CACHE");
     try {
@@ -569,7 +533,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── 12. HTTP Optimizer (Cookies / Protocol) ──
   if (!options.skipOptimizer) {
     section("1️⃣2️⃣  HTTP OPTIMIZER");
     try {
@@ -591,7 +554,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── 13. Render Blocking Scripts ──
   if (!options.skipRenderBlocking) {
     section("1️⃣3️⃣  RENDER BLOCKING");
     try {
@@ -613,7 +575,6 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  // ── 14. Package Upgrade (orchestrator) — mutates project, runs only with --upgrade ──
   if (options.upgrade) {
     section("🔄  PACKAGE UPGRADE");
     try {
@@ -621,11 +582,9 @@ ${CYAN}${BOLD}╔═════════════════════
       log("Package upgrade", "pass", "Packages upgraded with rollback support");
     } catch (err: any) {
       log("Package upgrade", "fail", err.message);
-      // Note: not added to AuditResult because it's an action, not a check
     }
   }
 
-  // ── Summary ──
   section("📋 FINAL SUMMARY");
   const allOk =
     result.env.ok &&
@@ -685,16 +644,11 @@ ${CYAN}${BOLD}╔═════════════════════
   }
   console.log("");
 
-// muraqib-unreachable: flagged by automated triage. Review before removal.
   return result;
 }
 
-// =========================================================================
-// Orchestrator wrapper (fixes missing export)
-// =========================================================================
 async function runUpgradePackages(targetPath: string) {
   const pkgPath = path.join(targetPath, "package.json");
-// muraqib-unreachable: flagged by automated triage. Review before removal.
   if (!fs.existsSync(pkgPath)) {
     throw new Error("No package.json found at target path");
   }
@@ -712,7 +666,7 @@ async function runUpgradePackages(targetPath: string) {
       await runMuraqibUpgradeOrchestrator({
         packageName: name,
         currentValue: current,
-        newVersion: current, // In production, fetch latest from npm registry
+        newVersion: current,
         rangeStrategy: "replace",
       });
       upgraded++;
@@ -726,10 +680,6 @@ async function runUpgradePackages(targetPath: string) {
   }
 }
 
-// =========================================================================
-// Error extraction (fixed)
-// =========================================================================
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 function extractEnvErrors(error: any): string[] {
   if (error?.isMuraqibCustom && Array.isArray(error.errors)) {
     return error.errors.map((e: any) => `${e.path || e.field || "unknown"}: ${e.message || "invalid"}`);
@@ -743,16 +693,12 @@ function extractEnvErrors(error: any): string[] {
   if (error?.errors && Array.isArray(error.errors)) {
     return error.errors.map((e: any) => {
       const path = Array.isArray(e.path) ? e.path.join(".") : (e.path || e.field || "unknown");
-// muraqib-unreachable: flagged by automated triage. Review before removal.
       return `${path}: ${e.message || "invalid"}`;
     });
   }
   return [error?.message || String(error)];
 }
 
-// =========================================================================
-// CLI
-// =========================================================================
 const isMain = import.meta.url.endsWith(process.argv[1]?.replace(/\\/g, "/") ?? "");
 
 if (isMain || process.argv[1]?.endsWith("index.ts")) {
@@ -760,9 +706,6 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
 
   const args = process.argv.slice(2);
   const opts: AuditOptions = {
-    targetPath: getArg(args, "--path"),
-    latencyUrl: getArg(args, "--url"),
-    securityUrl: getArg(args, "--security-url"),
     skipEnv: args.includes("--skip-env"),
     skipMemory: args.includes("--skip-memory"),
     skipSecurity: args.includes("--skip-security"),
@@ -770,23 +713,32 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
     skipDependencies: args.includes("--skip-dependencies"),
     skipAsync: args.includes("--skip-async"),
     skipConfig: args.includes("--skip-config"),
-    skipPerformance: args.includes("--skip-performance"),      // NEW
-    skipOptimizer: args.includes("--skip-optimizer"),          // NEW
-    skipRenderBlocking: args.includes("--skip-render-blocking"),// NEW
+    skipPerformance: args.includes("--skip-performance"),
+    skipOptimizer: args.includes("--skip-optimizer"),
+    skipRenderBlocking: args.includes("--skip-render-blocking"),
     silent: args.includes("--silent"),
-    schedule: getArg(args, "--schedule"),
     safe: args.includes("--safe"),
-    presets: getArg(args, "--presets")?.split(","),
-    upgrade: args.includes("--upgrade"),                       // NEW
+    upgrade: args.includes("--upgrade"),
   };
+
+  const pathArg = getArg(args, "--path");
+  if (pathArg) opts.targetPath = pathArg;
+
+  const urlArg = getArg(args, "--url");
+  if (urlArg) opts.latencyUrl = urlArg;
+
+  const securityUrlArg = getArg(args, "--security-url");
+  if (securityUrlArg) opts.securityUrl = securityUrlArg;
+
+  const scheduleArg = getArg(args, "--schedule");
+  if (scheduleArg) opts.schedule = scheduleArg;
+
+  const presetsArg = getArg(args, "--presets");
+  if (presetsArg) opts.presets = presetsArg.split(",");
 
   (async () => {
     try {
       const res = await runAudit(opts);
-      // Treat optimizer and non-critical performance warnings as informational only.
-      // Only exit non-zero for checks that indicate a critical failure.
-      // Treat optimizer and non-critical dependency warnings as informational only.
-      // Only exit non-zero for checks that indicate a critical failure.
       const failed =
         !res.env.ok ||
         !res.images.ok ||
@@ -805,7 +757,6 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
     }
   })();
 }
-
 
 function getArg(args: string[], flag: string): string | undefined {
   const i = args.indexOf(flag);
