@@ -1,8 +1,6 @@
 /**
  * DeadCodeAudit: أداة فحص ذكية لتحليل الكود الميت.
- * تعتمد على الـ file-scanner المشترك لضمان معمارية نظيفة وخالية من التكرار.
  */
-import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
 export interface DeadCodeAuditResult {
