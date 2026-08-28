@@ -5,13 +5,12 @@ function ensureSynchronous<T>(value: any, errorMessage: string): T {
     throw new Error(errorMessage);
   }
   return value as T;
-} // muraqib-ignore-dead: auto-suppressed by script for parseWithDictionary
+}
 
-// muraqib-ignore-dead: intentionally preserved (auto-suppress)
 export function parseWithDictionary<TDict extends StandardSchemaDictionary>(
   dictionary: TDict, 
   value: Record<string, unknown>
-): StandardSchemaV1.Result<StandardSchemaV1.InferOutput<TDict>> {
+): StandardSchemaV1.Result<StandardSchemaDictionary.InferOutput<TDict>> {
 
   const result: Record<string, unknown> = {};
   const issues: StandardSchemaV1.Issue[] = [];
@@ -46,5 +45,5 @@ export function parseWithDictionary<TDict extends StandardSchemaDictionary>(
     return { issues };
   }
 
-  return { value: result as StandardSchemaV1.InferOutput<TDict> };
+  return { value: result as StandardSchemaDictionary.InferOutput<TDict> };
 }
