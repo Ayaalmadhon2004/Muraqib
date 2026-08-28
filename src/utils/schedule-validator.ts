@@ -1,7 +1,4 @@
-// (triage) previously flagged as unreachable — reviewed and retained.
-// @ts-ignore
-// 👆 قمنا بتعطيل فحص الأنواع لهذا السطر فقط لأن الحزمة مكسورة داخلياً، مع الحفاظ على الـ import المتوافق مع Node.js 22
-import cronParser from 'cron-parser';
+import { parseExpression } from 'cron-parser';
 
 export function isWithinSchedule(scheduleString?: string): boolean { 
   if (!scheduleString || scheduleString.trim() === '') { 
@@ -16,8 +13,7 @@ export function isWithinSchedule(scheduleString?: string): boolean {
   }
 
   try {
-    // استدعاء الدالة مباشرة من الحزمة المستوردة
-    const interval = cronParser.parseExpression(scheduleString);
+    const interval = parseExpression(scheduleString);
     const prevExecution = interval.prev().toDate();
     const diffInMinutes = Math.abs(now.getTime() - prevExecution.getTime()) / (1000 * 60);
 
