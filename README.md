@@ -178,9 +178,81 @@ const env = createEnvWithPresets(
     presets: ["nextjs", "prisma", "tailwind"],
   }
 );
-```
+
+&lt;div align="center"&gt;
+
+# 🔍 Muraqib &lt;span dir="rtl"&gt;مراقب&lt;/span&gt;
+
+**Developer Environment Guardian & Performance Auditor**
+[](https://www.typescriptlang.org/)[](https://nodejs.org/)[](https://zod.dev/)[](LICENSE)&lt;p dir="rtl"&gt;
+&lt;strong&gt;مراقب&lt;/strong&gt; هو أداة تدقيق شاملة لبيئات التطوير — تفحص، ترصد، وتحسّن أداء مشاريعك بذكاء.
+&lt;/p&gt;
+
+&lt;/div&gt;
 
 ---
+
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Core Modules](#-core-modules)
+- [Environment Validation](#-environment-validation)
+- [CLI Usage](#-cli-usage)
+- [API Reference](#-api-reference)
+- [Architecture](#-architecture)
+- [Development Scripts](#-development-scripts)
+- [Contributing](#-contributing)
+
+---
+
+## ✨ Features
+
+### 🔐 Environment Guard
+- **Advanced `.env` Loader** — supports inline comments, multiline values, variable expansion (`$VAR`, `${VAR:-default}`), and quote handling
+- **Runtime Validation** — type-safe environment validation powered by [Zod](https://zod.dev/)
+- **Safe Mode** — `safeCreateEnv()` returns results instead of throwing
+- **Schedule Guard** — halt execution outside allowed cron windows
+- **Preset System** — inject pre-built validation schemas (local or remote)
+
+### 🚀 Performance Auditor (13 Modules)
+| # | Module | What it checks |
+|---|--------|---------------|
+| 1 | **Static Assets** | Image sizes &gt; 500 KB |
+| 2 | **Bundle Size** | 14 KB round-trip budget |
+| 3 | **Network Latency** | Request time & payload size |
+| 4 | **Memory Usage** | Heap leaks & RSS thresholds |
+| 5 | **Security Headers** | Missing security headers & score |
+| 6 | **Dead Code** | Empty functions, unreachable branches, unused exports |
+| 7 | **Dependencies** | Circular deps, deprecated APIs, duplicate packages |
+| 8 | **Async Patterns** | Floating promises, missing `await`, unhandled rejections |
+| 9 | **Configuration** | Missing files, insecure configs, invalid settings |
+| 10 | **Environment Vars** | `DATABASE_URL`, `PORT`, cache rules |
+| 11 | **Performance Cache** | Cache strategy optimization |
+| 12 | **HTTP Optimizer** | Cookie size, HTTP/2 vs HTTP/1.x protocol hints |
+| 13 | **Render Blocking** | Blocking scripts & stylesheets in `&lt;head&gt;` |
+
+### 🔄 Package Upgrade Orchestrator
+- **Smart Version Bumping** — `replace`, `widen`, or `bump` strategies
+- **Schema Migrations** — automated codemods for Tailwind, Prisma, Next.js, React, ESLint, Zustand
+- **Build Integrity Check** — validates the project still builds after upgrade
+- **Auto-Rollback** — reverts via Git if the build breaks
+
+---
+
+## 📦 Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/Ayaalmadhon2004/Muraqib.git
+cd Muraqib
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
 
 ## 💻 CLI Usage
 
