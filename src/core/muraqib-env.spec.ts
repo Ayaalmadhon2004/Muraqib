@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { getNewEnvValue } from '../muraqib-env.js';
+import { getNewEnvValue } from './muraqib-env.js';
 
 describe('Muraqib Env Transformation Engine (SemVer Inspired)', () => {
   
