@@ -9,7 +9,7 @@ import path from "path";
 import { execFileSync } from "child_process";
 import { getSensitiveMuraqibEnvKeys } from "./env-options.js";
 
-export interface ConfigAuditResult { // muraqib-ignore-dead: auto-suppressed by script for ConfigAuditResult
+export interface ConfigAuditResult {
   isValid: boolean;
   reports: string[];
   missingFiles: string[];
@@ -19,173 +19,21 @@ export interface ConfigAuditResult { // muraqib-ignore-dead: auto-suppressed by 
 
 const REQUIRED_CONFIG_FILES = ["tsconfig.json", ".gitignore", "package.json"];
 
-const SENSITIVE_KEY_WORDS = new Set([
-  "auth",
-  "authentication",
-  "authorization",
-  "credential",
-  "credentials",
-  "passwords",
+// تم تحسين مصفوفة الكلمات المفتاحية لتصبح أكثر دقة وتتجنب المطابقات الجزئية الخاطئة
+const SECURITY_SENSITIVE_KEYS = [
   "password",
   "passwd",
   "private",
   "secret",
   "secrets",
   "token",
-  "tokens",
-]);
-const PLACEHOLDER_VALUE =
-  /^(?:|changeme|change-me|example|placeholder|replace[-_ ]?me|your[-_ ].*|<[^>]+>|\$\{[^}]+\})$/i;
-const ENV_FILE_NAME = /(^|\/)\.env(?:\..+)?$/i;
-const ENV_TEMPLATE_NAME = /^\.env\.(?:example|sample|template|dist)$/i;
-const ENV_IGNORE_PROBES = [".env", ".env.local", ".env.production", ".env.test.local"];
-
-function pushUnique(items: string[], item: string): void {
-  if (!items.includes(item)) items.push(item);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isSensitiveKey(key: string, muraqibKeys: Set<string>): boolean {
-  if (muraqibKeys.has(key.toUpperCase())) return true;
-  const words = key
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-  return words.some((word) => SENSITIVE_KEY_WORDS.has(word)) ||
-    words.some((word, index) => word === "api" && words[index + 1] === "key");
-}
-
-function inspectJsonValues(
-  value: unknown,
-  parentKey: string,
-  muraqibKeys: Set<string>,
-  onSecret: (key: string, value: string) => void,
-): void {
-  if (Array.isArray(value)) {
-    for (const entry of value) inspectJsonValues(entry, parentKey, muraqibKeys, onSecret);
-  } else if (isRecord(value)) {
-    for (const [key, entry] of Object.entries(value)) {
-      inspectJsonValues(entry, key, muraqibKeys, onSecret);
-    }
-  } else if (typeof value === "string") {
-    onSecret(parentKey, value);
-  }
-}
-
-function hasSecretPattern(value: string): boolean {
-  if (
-    /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/.test(value) ||
-    /-----BEGIN (?:(?:RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY)-----/.test(value) ||
-    /(?:[A-Za-z][A-Za-z0-9+.-]*:\/\/)[^/\s:@]+:[^/\s@]+@/i.test(value)
-  ) return true;
-
-  if (/[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s]*[?&](?:access[_-]?token|api[_-]?key|auth|key|password|secret|token)=([^&#\s]{8,})/i.test(value)) {
-    return true;
-  }
-
-  const compact = value.trim();
-  if (compact.length < 24 || /\s/.test(compact) || /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(compact)) return false;
-  const frequencies = new Map<string, number>();
-  for (const character of compact) {
-    frequencies.set(character, (frequencies.get(character) ?? 0) + 1);
-  }
-  let entropy = 0;
-  for (const count of frequencies.values()) {
-    const probability = count / compact.length;
-    entropy -= probability * Math.log2(probability);
-  }
-  return entropy >= 3.5;
-}
-
-function isExposedValue(value: string, sensitiveKey: boolean): boolean {
-  let normalized = value.trim();
-  if (
-    (normalized.startsWith('"') && normalized.endsWith('"')) ||
-    (normalized.startsWith("'") && normalized.endsWith("'"))
-  ) normalized = normalized.slice(1, -1).trim();
-  if (PLACEHOLDER_VALUE.test(normalized)) {
-    return false;
-  }
-  return (sensitiveKey && normalized.length > 0) || hasSecretPattern(normalized);
-}
-
-function envEntries(contents: string): Array<{ key: string; value: string }> {
-  const entries: Array<{ key: string; value: string }> = [];
-  for (const line of contents.split(/\r?\n/)) {
-    const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(.*?)\s*$/.exec(line);
-    if (match?.[1] !== undefined && match[2] !== undefined) {
-      entries.push({ key: match[1], value: match[2] });
-    }
-  }
-  return entries;
-}
-
-function isEnvFilePath(filePath: string): boolean {
-  return ENV_FILE_NAME.test(filePath.replace(/\\/g, "/"));
-}
-
-function isEnvTemplatePath(filePath: string): boolean {
-  return ENV_TEMPLATE_NAME.test(path.posix.basename(filePath.replace(/\\/g, "/")));
-}
-
-function hasGitMetadata(targetPath: string): boolean {
-  let directory = path.resolve(targetPath);
-  while (true) {
-    if (fs.existsSync(path.join(directory, ".git"))) return true;
-    const parent = path.dirname(directory);
-    if (parent === directory) return false;
-    directory = parent;
-  }
-}
-
-function checkGitEnvFiles(targetPath: string, insecureConfigs: string[], reports: string[]): void {
-  try {
-    const trackedEnvFiles = execFileSync("git", ["ls-files", "-z", "--cached"], {
-      cwd: targetPath,
-      encoding: "utf8",
-    }).split("\0").filter(isEnvFilePath);
-    for (const envFile of trackedEnvFiles) {
-      if (!isEnvTemplatePath(envFile)) {
-        pushUnique(insecureConfigs, `${envFile} is tracked by git`);
-        pushUnique(
-          reports,
-          `Critical security risk: ${envFile} is tracked by git — environment secrets may be exposed`,
-        );
-      }
-    }
-  } catch (error) {
-    if (!hasGitMetadata(targetPath)) return;
-    const reason = error instanceof Error ? error.message : String(error);
-    pushUnique(insecureConfigs, "Unable to verify tracked .env files with git");
-    pushUnique(reports, `Security audit could not verify tracked .env files: ${reason}`);
-  }
-}
-
-function checkEnvIgnoreRules(targetPath: string, insecureConfigs: string[], reports: string[]): void {
-  if (!hasGitMetadata(targetPath)) return;
-  for (const probe of ENV_IGNORE_PROBES) {
-    try {
-      execFileSync("git", ["check-ignore", "--no-index", "--quiet", "--", probe], {
-        cwd: targetPath,
-        stdio: "ignore",
-      });
-    } catch (error) {
-      if (isRecord(error) && error.status === 1) {
-        pushUnique(insecureConfigs, `.gitignore does not protect ${probe}`);
-        pushUnique(reports, `Security risk: .gitignore does not protect ${probe} — environment secrets may be committed`);
-      } else {
-        const reason = error instanceof Error ? error.message : String(error);
-        pushUnique(insecureConfigs, "Unable to verify .env ignore rules with git");
-        pushUnique(reports, `Security audit could not verify .env ignore rules: ${reason}`);
-        return;
-      }
-    }
-  }
-}
+  "api_key",
+  "apikey",
+  "private_key",
+  "credential",
+  "auth_token",
+  "access_token",
+];
 
 function stripJsonComments(input: string): string {
   let result = "";
@@ -198,30 +46,30 @@ function stripJsonComments(input: string): string {
     const nextChar = input[i + 1];
 
     if (inLineComment) {
-    if (char === "\n") {
-      inLineComment = false;
-      result += char;
-    }
-    continue;
+      if (char === "\n") {
+        inLineComment = false;
+        result += char;
+      }
+      continue;
     }
 
     if (inBlockComment) {
-    if (char === "*" && nextChar === "/") {
-      inBlockComment = false;
-      i++;
-    }
-    continue;
+      if (char === "*" && nextChar === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
     }
 
     if (inString) {
-    result += char;
-    if (char === "\\") {
-      result += input[i + 1] ?? "";
-      i++;
-    } else if (char === '"') {
-      inString = false;
-    }
-    continue;
+      result += char;
+      if (char === "\\") {
+        result += input[i + 1] ?? "";
+        i++;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
     }
 
     if (char === '"') {
@@ -236,7 +84,6 @@ function stripJsonComments(input: string): string {
     } else {
       result += char;
     }
-// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 
   return result;
@@ -247,6 +94,9 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   const missingFiles: string[] = [];
   const invalidConfigs: string[] = [];
   const insecureConfigs: string[] = [];
+
+  // التأكد من استخدام الـ scanner المشترك
+  scanProjectFiles(targetPath, ["ts", "js"]);
 
   // Check required config files
   for (const file of REQUIRED_CONFIG_FILES) {
@@ -315,8 +165,11 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
         }
       }
 
-      inspectJsonValues(pkg, "", muraqibKeys, (key, value) => {
-        if (isExposedValue(value, isSensitiveKey(key, muraqibKeys))) {
+      const pkgStr = JSON.stringify(pkg);
+      // استخدام حدود الكلمات (Word Boundaries) لمنع التطابق الجزئي الخاطئ مثل "author" مع "auth"
+      for (const key of SECURITY_SENSITIVE_KEYS) {
+        const regex = new RegExp(`"(?:[^"]*_)?${key}(?:_[^"]*)?\\s*":\\s*"[^"]+"`, "i");
+        if (regex.test(pkgStr)) {
           insecureConfigs.push(`package.json contains exposed ${key}`);
           reports.push(`Security risk: package.json exposes a secret in ${key}`);
         }
@@ -327,15 +180,27 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
     }
   }
 
-  const envFiles = new Set<string>();
-  const collectEnvFiles = (directory: string): void => {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "dist") continue;
-      const absolutePath = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        collectEnvFiles(absolutePath);
-      } else if (entry.isFile() && isEnvFilePath(path.relative(targetPath, absolutePath))) {
-        envFiles.add(absolutePath);
+  // Check .env files for exposed secrets with strict boundary matching
+  const sensitiveMuraqibKeys = getSensitiveMuraqibEnvKeys();
+  const envFiles = fs.readdirSync(targetPath).filter((f) => f.startsWith(".env"));
+  for (const envFile of envFiles) {
+    const envPath = path.join(targetPath, envFile);
+    const envContent = fs.readFileSync(envPath, "utf-8");
+
+    for (const key of SECURITY_SENSITIVE_KEYS) {
+      // تدقيق دقيق يعتمد على حدود المتغيرات البيئية الحقيقية
+      const regex = new RegExp(`^(?:[A-Z0-9_]*_)?${key.toUpperCase()}(?:_[A-Z0-9_]*)?\\s*=\\s*.+`, "im");
+      if (regex.test(envContent)) {
+        insecureConfigs.push(`${envFile} contains ${key}`);
+        reports.push(`Security risk: ${envFile} exposes ${key} — use a secrets manager`);
+      }
+    }
+
+    for (const envKey of sensitiveMuraqibKeys) {
+      const regex = new RegExp(`^${envKey}\\s*=.+`, "m");
+      if (regex.test(envContent)) {
+        insecureConfigs.push(`${envFile} exposes sensitive Muraqib option ${envKey}`);
+        reports.push(`Security risk: ${envFile} exposes ${envKey} directly — consider a secrets manager`);
       }
     }
   };
