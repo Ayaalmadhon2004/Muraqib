@@ -18,7 +18,6 @@ export function getMuraqibNewVersionValue({
   
   if (typeof currentVersion !== 'string' || typeof newVersion !== 'string') {
     return currentVersion; 
-// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 
   const cleanCurrent = currentVersion.trim();
@@ -26,7 +25,6 @@ export function getMuraqibNewVersionValue({
   const parsedNew = semver.parse(cleanNew); 
 
   if (parsedNew && parsedNew.prerelease.length > 0) {
-// muraqib-unreachable: flagged by automated triage. Review before removal.
     return cleanCurrent; 
   }
 
@@ -52,9 +50,8 @@ export function getMuraqibNewVersionValue({
 
     case 'keep-both':
       return `${cleanCurrent} || ${formattedNewVersion}`;
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 
-    default:
+      default:
       return formattedNewVersion;
   }
 }

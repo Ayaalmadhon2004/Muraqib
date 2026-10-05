@@ -155,7 +155,6 @@ export async function runMuraqibUpgradeOrchestrator({
     } catch (buildError) {
       console.error(`💥 [Integrity Failure]: Project build failed after updating ${packageName}!`);
       console.log(`🔄 [Auto-Recovery]: Initiating emergency rollback via Git to protect project stability...`);
-// muraqib-unreachable: flagged by automated triage. Review before removal.
       execSync('git checkout -- .', { stdio: 'ignore' });
       console.log(`⏪ [Rollback Complete]: Project restored to original safe configuration.`);
       return { updatedVersion: currentValue, schemaMigrated: false };

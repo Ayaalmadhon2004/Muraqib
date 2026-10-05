@@ -2,7 +2,7 @@ import https from "https";
 import http from "http";
 import { URL } from "url";
 
-export interface SecurityAuditResult { // muraqib-ignore-dead: auto-suppressed by script for SecurityAuditResult
+export interface SecurityAuditResult {
   isSecure: boolean;
   reports: string[];
   headers: Record<string, string | string[] | undefined>;
@@ -25,7 +25,20 @@ const RECOMMENDED_HEADERS = [
 
 export async function performSecurityAudit(targetUrl: string): Promise<SecurityAuditResult> {
   const reports: string[] = [];
-  const url = new URL(targetUrl);
+  let url: URL;
+  
+  try {
+    url = new URL(targetUrl);
+  } catch (err: any) {
+    reports.push(`Invalid target URL provided: ${targetUrl}`);
+    return {
+      isSecure: false,
+      reports,
+      headers: {},
+      score: 0,
+    };
+  }
+
   const hostname = url.hostname;
   const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(hostname);
   const isHttps = url.protocol === "https:";
@@ -94,18 +107,11 @@ export async function performSecurityAudit(targetUrl: string): Promise<SecurityA
         const passedChecks = Math.max(0, totalChecks - reports.length);
         let score = Math.max(0, Math.round((passedChecks / totalChecks) * 100));
 
-        // If auditing an external host (not localhost/127.0.0.1/::1), downgrade missing recommended headers
-        // to non-critical so public third-party endpoints don't make the audit fail. This keeps the audit
-        // useful for local development servers while avoiding false-critical failures for remote URLs.
-        const hostname = url.hostname;
-        const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(hostname);
-
+        // If auditing an external host, downgrade missing recommended headers impact
         if (!isLocalHost && isHttps && reports.length > 0) {
-          // Mark as non-fatal: ensure score doesn't drop below 50 for external HTTPS hosts.
           score = Math.max(score, 50);
         }
 
-        // For local development (localhost/127.0.0.1/::1), allow HTTP but require headers to be present.
         const isSecure = isLocalHost ? (reports.length === 0) : true;
 
         resolve({
