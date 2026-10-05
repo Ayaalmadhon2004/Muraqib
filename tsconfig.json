@@ -44,6 +44,5 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["node_modules", "dist", "public", "scripts", "src/app", "**/*.spec.ts", "**/*.test.ts", "src/**/*.spec.ts"]
+  "exclude": ["node_modules", "dist", "public", "scripts", "src/app", "examples/express-prisma", "**/*.spec.ts", "**/*.test.ts", "src/**/*.spec.ts"]
 }
-

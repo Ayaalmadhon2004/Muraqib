@@ -4,7 +4,7 @@ import sharp from 'sharp';
 
 async function optimize() {
   const repoRoot = process.cwd();
-  const imgPath = path.join(repoRoot, 'public', 'assets', 'Gemini_Generated_Image_qrr6ubqrr6ubqrr6.png');
+  const imgPath = path.join(repoRoot, 'examples', 'express-prisma', 'public', 'assets', 'Gemini_Generated_Image_qrr6ubqrr6ubqrr6.png');
   if (!fs.existsSync(imgPath)) {
     console.error('[optimize-images] Image not found:', imgPath);
     process.exit(2);

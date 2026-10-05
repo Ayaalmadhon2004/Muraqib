@@ -1,6 +1,13 @@
 import axios from 'axios';
 
-export const performLiveLatencyAudit = async (url: string) => {
+export interface LatencyAuditResult {
+  isOptimized: boolean;
+  reports: string[];
+  requestTimeMs: number;
+  payloadSizeKb: number;
+}
+
+export const performLiveLatencyAudit = async (url: string): Promise<LatencyAuditResult> => {
     const startTime = Date.now(); 
 
     try {
@@ -23,16 +30,25 @@ export const performLiveLatencyAudit = async (url: string) => {
             console.log("✅ [Muraqib]: Target URL is highly optimized and fast!");
         }
 
-        return auditResult;
+        return {
+            ...auditResult,
+            requestTimeMs,
+            payloadSizeKb
+        };
 
     } catch (error) {
         console.error(`❌ [Muraqib Audit Error]: Failed to fetch or measure the URL: ${url}`);
-        return { isOptimized: false, reports: ["خطأ في الاتصال بالشبكة أو الرابط غير صالح."] };
+        return { 
+            isOptimized: false, 
+            reports: ["خطأ في الاتصال بالشبكة أو الرابط غير صالح."],
+            requestTimeMs: 0,
+            payloadSizeKb: 0
+        };
     }
 };
- // muraqib-ignore-dead: auto-suppressed by script for analyzeLatency
+
 export const analyzeLatency = (requestTimeMs: number, payloadSizeKb: number) => {
-    const reports = [];
+    const reports: string[] = [];
 
     if (payloadSizeKb > 14) { 
         reports.push('تحذير: حجم الاستجابة الأولى يتجاوز 14KB. هذا سيسبب رحلة إضافية (Round Trip) بناءً على قيود TCP.');

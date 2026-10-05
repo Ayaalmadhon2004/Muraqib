@@ -1,4 +1,3 @@
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 import fs from 'fs';
 import path from 'path';
 
@@ -45,9 +44,9 @@ const scanDirectoryForImages = (dirPath: string, violations: ImageViolation[] = 
     return violations;
 };
 
-export const runImagePerformanceAudit = () => {
+export const runImagePerformanceAudit = (targetPath?: string) => {
     console.log("\n📷 [Muraqib]: Starting Image Assets Size Audit...");
-    const rootDir = process.cwd(); 
+    const rootDir = targetPath || process.cwd(); 
     const violations = scanDirectoryForImages(rootDir);
 
     if (violations.length > 0) {
