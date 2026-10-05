@@ -1,18 +1,13 @@
- /**### 🛡️ Config & Security Guard (`config-guard.ts`)
-
-The `config-guard` module is an automated auditing engine designed to inspect project configuration files and environment settings for security vulnerabilities, missing dependencies, and strict type-safety standards.
-
-#### Key Features:
-* **Required Files Audit:** Verifies the presence of essential project files (`tsconfig.json`, `package.json`, `.gitignore`).
-* **TypeScript Strictness Check:** Validates `tsconfig.json` configurations (checking for `strict`, `noImplicitAny`, and dead-code detection flags).
-* **Package & Secret Leakage Detection:** Scans `package.json` and `.env` files for exposed plaintext secrets (e.g., passwords, API keys, tokens).
-* **Git Security Enforcement:** Ensures `.env` files are properly included in `.gitignore` and are not actively tracked by git version control.
-*  */
+/**
+ * Config and security audit for required project files, TypeScript strictness,
+ * exposed secrets, and Git tracking/ignore protection for environment files.
+ * Secret detection uses exact key-word boundaries plus JWT, private-key,
+ * credential-bearing URL, and high-entropy value patterns.
+ */
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { getSensitiveMuraqibEnvKeys } from "./env-options.js";
-import { scanProjectFiles } from "../utils/file-scanner.js";
 
 export interface ConfigAuditResult { // muraqib-ignore-dead: auto-suppressed by script for ConfigAuditResult
   isValid: boolean;
@@ -24,15 +19,173 @@ export interface ConfigAuditResult { // muraqib-ignore-dead: auto-suppressed by 
 
 const REQUIRED_CONFIG_FILES = ["tsconfig.json", ".gitignore", "package.json"];
 
-const SECURITY_SENSITIVE_KEYS = [
-  "password",
-  "secret",
-  "token",
-  "api_key",
-  "private_key",
+const SENSITIVE_KEY_WORDS = new Set([
   "auth",
+  "authentication",
+  "authorization",
   "credential",
-];
+  "credentials",
+  "passwords",
+  "password",
+  "passwd",
+  "private",
+  "secret",
+  "secrets",
+  "token",
+  "tokens",
+]);
+const PLACEHOLDER_VALUE =
+  /^(?:|changeme|change-me|example|placeholder|replace[-_ ]?me|your[-_ ].*|<[^>]+>|\$\{[^}]+\})$/i;
+const ENV_FILE_NAME = /(^|\/)\.env(?:\..+)?$/i;
+const ENV_TEMPLATE_NAME = /^\.env\.(?:example|sample|template|dist)$/i;
+const ENV_IGNORE_PROBES = [".env", ".env.local", ".env.production", ".env.test.local"];
+
+function pushUnique(items: string[], item: string): void {
+  if (!items.includes(item)) items.push(item);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSensitiveKey(key: string, muraqibKeys: Set<string>): boolean {
+  if (muraqibKeys.has(key.toUpperCase())) return true;
+  const words = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return words.some((word) => SENSITIVE_KEY_WORDS.has(word)) ||
+    words.some((word, index) => word === "api" && words[index + 1] === "key");
+}
+
+function inspectJsonValues(
+  value: unknown,
+  parentKey: string,
+  muraqibKeys: Set<string>,
+  onSecret: (key: string, value: string) => void,
+): void {
+  if (Array.isArray(value)) {
+    for (const entry of value) inspectJsonValues(entry, parentKey, muraqibKeys, onSecret);
+  } else if (isRecord(value)) {
+    for (const [key, entry] of Object.entries(value)) {
+      inspectJsonValues(entry, key, muraqibKeys, onSecret);
+    }
+  } else if (typeof value === "string") {
+    onSecret(parentKey, value);
+  }
+}
+
+function hasSecretPattern(value: string): boolean {
+  if (
+    /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/.test(value) ||
+    /-----BEGIN (?:(?:RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY)-----/.test(value) ||
+    /(?:[A-Za-z][A-Za-z0-9+.-]*:\/\/)[^/\s:@]+:[^/\s@]+@/i.test(value)
+  ) return true;
+
+  if (/[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s]*[?&](?:access[_-]?token|api[_-]?key|auth|key|password|secret|token)=([^&#\s]{8,})/i.test(value)) {
+    return true;
+  }
+
+  const compact = value.trim();
+  if (compact.length < 24 || /\s/.test(compact) || /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(compact)) return false;
+  const frequencies = new Map<string, number>();
+  for (const character of compact) {
+    frequencies.set(character, (frequencies.get(character) ?? 0) + 1);
+  }
+  let entropy = 0;
+  for (const count of frequencies.values()) {
+    const probability = count / compact.length;
+    entropy -= probability * Math.log2(probability);
+  }
+  return entropy >= 3.5;
+}
+
+function isExposedValue(value: string, sensitiveKey: boolean): boolean {
+  let normalized = value.trim();
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) normalized = normalized.slice(1, -1).trim();
+  if (PLACEHOLDER_VALUE.test(normalized)) {
+    return false;
+  }
+  return (sensitiveKey && normalized.length > 0) || hasSecretPattern(normalized);
+}
+
+function envEntries(contents: string): Array<{ key: string; value: string }> {
+  const entries: Array<{ key: string; value: string }> = [];
+  for (const line of contents.split(/\r?\n/)) {
+    const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(.*?)\s*$/.exec(line);
+    if (match?.[1] !== undefined && match[2] !== undefined) {
+      entries.push({ key: match[1], value: match[2] });
+    }
+  }
+  return entries;
+}
+
+function isEnvFilePath(filePath: string): boolean {
+  return ENV_FILE_NAME.test(filePath.replace(/\\/g, "/"));
+}
+
+function isEnvTemplatePath(filePath: string): boolean {
+  return ENV_TEMPLATE_NAME.test(path.posix.basename(filePath.replace(/\\/g, "/")));
+}
+
+function hasGitMetadata(targetPath: string): boolean {
+  let directory = path.resolve(targetPath);
+  while (true) {
+    if (fs.existsSync(path.join(directory, ".git"))) return true;
+    const parent = path.dirname(directory);
+    if (parent === directory) return false;
+    directory = parent;
+  }
+}
+
+function checkGitEnvFiles(targetPath: string, insecureConfigs: string[], reports: string[]): void {
+  try {
+    const trackedEnvFiles = execFileSync("git", ["ls-files", "-z", "--cached"], {
+      cwd: targetPath,
+      encoding: "utf8",
+    }).split("\0").filter(isEnvFilePath);
+    for (const envFile of trackedEnvFiles) {
+      if (!isEnvTemplatePath(envFile)) {
+        pushUnique(insecureConfigs, `${envFile} is tracked by git`);
+        pushUnique(
+          reports,
+          `Critical security risk: ${envFile} is tracked by git — environment secrets may be exposed`,
+        );
+      }
+    }
+  } catch (error) {
+    if (!hasGitMetadata(targetPath)) return;
+    const reason = error instanceof Error ? error.message : String(error);
+    pushUnique(insecureConfigs, "Unable to verify tracked .env files with git");
+    pushUnique(reports, `Security audit could not verify tracked .env files: ${reason}`);
+  }
+}
+
+function checkEnvIgnoreRules(targetPath: string, insecureConfigs: string[], reports: string[]): void {
+  if (!hasGitMetadata(targetPath)) return;
+  for (const probe of ENV_IGNORE_PROBES) {
+    try {
+      execFileSync("git", ["check-ignore", "--no-index", "--quiet", "--", probe], {
+        cwd: targetPath,
+        stdio: "ignore",
+      });
+    } catch (error) {
+      if (isRecord(error) && error.status === 1) {
+        pushUnique(insecureConfigs, `.gitignore does not protect ${probe}`);
+        pushUnique(reports, `Security risk: .gitignore does not protect ${probe} — environment secrets may be committed`);
+      } else {
+        const reason = error instanceof Error ? error.message : String(error);
+        pushUnique(insecureConfigs, "Unable to verify .env ignore rules with git");
+        pushUnique(reports, `Security audit could not verify .env ignore rules: ${reason}`);
+        return;
+      }
+    }
+  }
+}
 
 function stripJsonComments(input: string): string {
   let result = "";
@@ -95,9 +248,6 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   const invalidConfigs: string[] = [];
   const insecureConfigs: string[] = [];
 
-  // التأكد من استخدام الـ scanner المشترك إذا لزم الأمر في مرور الملفات
-  scanProjectFiles(targetPath, ["ts", "js"]);
-
   // Check required config files
   for (const file of REQUIRED_CONFIG_FILES) {
     const filePath = path.join(targetPath, file);
@@ -114,27 +264,33 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
       const rawTsconfig = fs.readFileSync(tsconfigPath, "utf-8");
       const withoutComments = stripJsonComments(rawTsconfig);
       const stripped = withoutComments.replace(/,(\s*[}\]])/g, "$1");
-      const tsconfig = JSON.parse(stripped);
+      const parsed: unknown = JSON.parse(stripped);
+      const tsconfig = isRecord(parsed) ? parsed : {};
+      const compilerOptions = isRecord(tsconfig.compilerOptions) ? tsconfig.compilerOptions : undefined;
 
-      if (!tsconfig.compilerOptions) {
+      if (!compilerOptions) {
         invalidConfigs.push("tsconfig.json missing compilerOptions");
         reports.push("tsconfig.json: missing compilerOptions section");
       } else {
-        if (tsconfig.compilerOptions.strict !== true) {
+        if (compilerOptions.strict !== true) {
           insecureConfigs.push("tsconfig.json: strict mode disabled");
           reports.push("tsconfig.json: strict mode is disabled — enable for type safety");
         }
-        if (tsconfig.compilerOptions.noImplicitAny !== true) {
+        if (compilerOptions.noUncheckedIndexedAccess !== true) {
+          insecureConfigs.push("tsconfig.json: noUncheckedIndexedAccess disabled");
+          reports.push("tsconfig.json: noUncheckedIndexedAccess is disabled — enable for safer indexed access");
+        }
+        if (compilerOptions.noImplicitAny !== true) {
           insecureConfigs.push("tsconfig.json: noImplicitAny disabled");
           reports.push("tsconfig.json: noImplicitAny is disabled — enable to catch implicit any types");
         }
-        if (tsconfig.compilerOptions.noUnusedLocals !== true) {
+        if (compilerOptions.noUnusedLocals !== true) {
           reports.push("tsconfig.json: noUnusedLocals is disabled — enable to catch dead code");
         }
-        if (tsconfig.compilerOptions.noUnusedParameters !== true) {
+        if (compilerOptions.noUnusedParameters !== true) {
           reports.push("tsconfig.json: noUnusedParameters is disabled — enable to catch unused params");
         }
-        if (tsconfig.compilerOptions.exactOptionalPropertyTypes !== true) {
+        if (compilerOptions.exactOptionalPropertyTypes !== true) {
           reports.push("tsconfig.json: exactOptionalPropertyTypes is disabled — enable for stricter optional types");
         }
       }
@@ -145,85 +301,75 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   }
 
   // Check package.json
+  const muraqibKeys = new Set(getSensitiveMuraqibEnvKeys().map((key) => key.toUpperCase()));
   const packagePath = path.join(targetPath, "package.json");
   if (fs.existsSync(packagePath)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
+      const parsed: unknown = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
+      const pkg = isRecord(parsed) ? parsed : {};
+      const scripts = isRecord(pkg.scripts) ? pkg.scripts : {};
 
-      if (!pkg.scripts || !pkg.scripts.test) {
-        reports.push("package.json: missing test script");
-      }
-      if (!pkg.scripts || !pkg.scripts.build) {
-        reports.push("package.json: missing build script");
-      }
-      if (!pkg.scripts || !pkg.scripts.lint) {
-        reports.push("package.json: missing lint script");
-      }
-
-      const pkgStr = JSON.stringify(pkg);
-      for (const key of SECURITY_SENSITIVE_KEYS) {
-        const regex = new RegExp(`"${key}\\s*":\\s*"[^"]+"`, "i");
-        if (regex.test(pkgStr)) {
-          insecureConfigs.push(`package.json contains exposed ${key}`);
-          reports.push(`Security risk: package.json exposes ${key} in plaintext`);
+      for (const script of ["test", "build", "lint"]) {
+        if (typeof scripts[script] !== "string" || scripts[script] === "") {
+          reports.push(`package.json: missing ${script} script`);
         }
       }
+
+      inspectJsonValues(pkg, "", muraqibKeys, (key, value) => {
+        if (isExposedValue(value, isSensitiveKey(key, muraqibKeys))) {
+          insecureConfigs.push(`package.json contains exposed ${key}`);
+          reports.push(`Security risk: package.json exposes a secret in ${key}`);
+        }
+      });
     } catch (e) {
       invalidConfigs.push("package.json is invalid JSON");
       reports.push("package.json: invalid JSON format");
     }
   }
 
-  // Check .env files for exposed secrets (عام + مفاتيح Muraqib الخاصة نفسها)
-  const sensitiveMuraqibKeys = getSensitiveMuraqibEnvKeys();
-  const envFiles = fs.readdirSync(targetPath).filter((f) => f.startsWith(".env"));
-  for (const envFile of envFiles) {
-    const envPath = path.join(targetPath, envFile);
-    const envContent = fs.readFileSync(envPath, "utf-8");
-
-    for (const key of SECURITY_SENSITIVE_KEYS) {
-      const regex = new RegExp(`${key}=.+`, "i");
-      if (regex.test(envContent)) {
-        insecureConfigs.push(`${envFile} contains ${key}`);
-        reports.push(`Security risk: ${envFile} exposes ${key} — use a secrets manager`);
+  const envFiles = new Set<string>();
+  const collectEnvFiles = (directory: string): void => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "dist") continue;
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        collectEnvFiles(absolutePath);
+      } else if (entry.isFile() && isEnvFilePath(path.relative(targetPath, absolutePath))) {
+        envFiles.add(absolutePath);
       }
     }
+  };
 
-    for (const envKey of sensitiveMuraqibKeys) {
-      const regex = new RegExp(`^${envKey}\\s*=.+`, "m");
-      if (regex.test(envContent)) {
-        insecureConfigs.push(`${envFile} exposes sensitive Muraqib option ${envKey}`);
-        reports.push(`Security risk: ${envFile} exposes ${envKey} directly — consider a secrets manager`);
-      }
-    }
-
-    // Check if .env is in .gitignore
-    const gitignorePath = path.join(targetPath, ".gitignore");
-    if (fs.existsSync(gitignorePath)) {
-      const gitignore = fs.readFileSync(gitignorePath, "utf-8");
-      if (!gitignore.includes(".env")) {
-        insecureConfigs.push(".env not in .gitignore");
-        reports.push("Security risk: .env files are not in .gitignore — secrets may be committed");
-      }
-    }
+  try {
+    collectEnvFiles(targetPath);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    insecureConfigs.push("Unable to scan .env files");
+    reports.push(`Security audit could not scan .env files: ${reason}`);
   }
 
-  // Check for .env in repo (shouldn't be committed)
-  const gitPath = path.join(targetPath, ".git");
-  if (fs.existsSync(gitPath)) {
-    const trackedEnv = path.join(targetPath, ".env");
-    if (fs.existsSync(trackedEnv)) {
-      try {
-        const isTracked = execSync("git ls-files .env", { cwd: targetPath, encoding: "utf-8" }).trim();
-        if (isTracked) {
-          insecureConfigs.push(".env is tracked by git");
-          reports.push("Critical security risk: .env is tracked by git — secrets are exposed in version control");
+  for (const envPath of envFiles) {
+    const relativePath = path.relative(targetPath, envPath).replace(/\\/g, "/");
+    try {
+      const contents = fs.readFileSync(envPath, "utf-8");
+      for (const { key, value } of envEntries(contents)) {
+        if (isExposedValue(value, isSensitiveKey(key, muraqibKeys))) {
+          pushUnique(insecureConfigs, `${relativePath} contains exposed ${key}`);
+          pushUnique(
+            reports,
+            `Security risk: ${relativePath} exposes a secret through ${key} — use a secrets manager`,
+          );
         }
-      } catch (e) {
-        // git command failed, skip
       }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      pushUnique(insecureConfigs, `Unable to read ${relativePath}`);
+      pushUnique(reports, `Security audit could not read ${relativePath}: ${reason}`);
     }
   }
+
+  checkGitEnvFiles(targetPath, insecureConfigs, reports);
+  checkEnvIgnoreRules(targetPath, insecureConfigs, reports);
 
   return {
     isValid: reports.length === 0,

@@ -2,6 +2,8 @@
 dist/
 .DS_Store
 .env
+.env.*
+!.env.example
 /.env.local
 /.idea/
 .vscode/
