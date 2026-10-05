@@ -4,10 +4,9 @@
  * يُستخدم كـ smoke check أثناء تشغيل عمليات الـ audit الطويلة لمراقبة الأداء
  * والكشف المبكر عن أي ارتفاع غير طبيعي في الذاكرة.
  */
-import v8 from "v8"; 
-import os from "os";
+import v8 from "v8";
 
-export interface MemoryAuditResult { // muraqib-ignore-dead: auto-suppressed by script for MemoryAuditResult
+export interface MemoryAuditResult {
   isOptimized: boolean;
   reports: string[];
   heapUsedMb: number;
@@ -18,16 +17,26 @@ export interface MemoryAuditResult { // muraqib-ignore-dead: auto-suppressed by 
   leakRisk: "none" | "low" | "medium" | "high";
 }
 
-const HEAP_WARN_MB = 512;
-const HEAP_CRITICAL_MB = 1024;
-const RSS_WARN_MB = 1024;
-const EXTERNAL_WARN_MB = 256;
-const HEAP_RATIO_WARN = 0.85;
+export interface MemoryAuditOptions {
+  heapWarnMb?: number;
+  heapCriticalMb?: number;
+  rssWarnMb?: number;
+  externalWarnMb?: number;
+  heapRatioWarn?: number;
+}
 
-export function performMemoryAudit(): MemoryAuditResult {
+const DEFAULT_OPTIONS: Required<MemoryAuditOptions> = {
+  heapWarnMb: 512,
+  heapCriticalMb: 1024,
+  rssWarnMb: 1024,
+  externalWarnMb: 256,
+  heapRatioWarn: 0.85,
+};
+
+export function performMemoryAudit(options: MemoryAuditOptions = {}): MemoryAuditResult {
+  const config = { ...DEFAULT_OPTIONS, ...options };
   const mem = process.memoryUsage();
   const heapStats = v8.getHeapStatistics();
-  void os.totalmem();
 
   const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024);
   const heapTotalMb = Math.round(mem.heapTotal / 1024 / 1024);
@@ -38,21 +47,21 @@ export function performMemoryAudit(): MemoryAuditResult {
   const reports: string[] = [];
   const heapRatio = heapStats.used_heap_size / heapStats.total_heap_size;
 
-  if (heapUsedMb > HEAP_CRITICAL_MB) {
-    reports.push(`Critical heap usage: ${heapUsedMb} MB (limit: ${HEAP_CRITICAL_MB} MB)`);
-  } else if (heapUsedMb > HEAP_WARN_MB) {
-    reports.push(`High heap usage: ${heapUsedMb} MB (warn: ${HEAP_WARN_MB} MB)`);
+  if (heapUsedMb > config.heapCriticalMb) {
+    reports.push(`Critical heap usage: ${heapUsedMb} MB (limit: ${config.heapCriticalMb} MB)`);
+  } else if (heapUsedMb > config.heapWarnMb) {
+    reports.push(`High heap usage: ${heapUsedMb} MB (warn: ${config.heapWarnMb} MB)`);
   }
 
-  if (rssMb > RSS_WARN_MB) {
-    reports.push(`High RSS memory: ${rssMb} MB (warn: ${RSS_WARN_MB} MB)`);
+  if (rssMb > config.rssWarnMb) {
+    reports.push(`High RSS memory: ${rssMb} MB (warn: ${config.rssWarnMb} MB)`);
   }
 
-  if (externalMb > EXTERNAL_WARN_MB) {
-    reports.push(`High external memory: ${externalMb} MB (warn: ${EXTERNAL_WARN_MB} MB)`);
+  if (externalMb > config.externalWarnMb) {
+    reports.push(`High external memory: ${externalMb} MB (warn: ${config.externalWarnMb} MB)`);
   }
 
-  if (heapRatio > HEAP_RATIO_WARN) {
+  if (heapRatio > config.heapRatioWarn) {
     reports.push(`Heap fragmentation risk: ${(heapRatio * 100).toFixed(1)}% used`);
   }
 
