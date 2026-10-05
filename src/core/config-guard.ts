@@ -1,20 +1,17 @@
- /**### 🛡️ Config & Security Guard (`config-guard.ts`)
-
-The `config-guard` module is an automated auditing engine designed to inspect project configuration files and environment settings for security vulnerabilities, missing dependencies, and strict type-safety standards.
-
-#### Key Features:
-* **Required Files Audit:** Verifies the presence of essential project files (`tsconfig.json`, `package.json`, `.gitignore`).
-* **TypeScript Strictness Check:** Validates `tsconfig.json` configurations (checking for `strict`, `noImplicitAny`, and dead-code detection flags).
-* **Package & Secret Leakage Detection:** Scans `package.json` and `.env` files for exposed plaintext secrets (e.g., passwords, API keys, tokens).
-* **Git Security Enforcement:** Ensures `.env` files are properly included in `.gitignore` and are not actively tracked by git version control.
-*  */
+/**
+ * 🛡️ Config & Security Guard (`config-guard.ts`)
+ *
+ * The `config-guard` module is an automated auditing engine designed to inspect
+ * project configuration files and environment settings for security vulnerabilities,
+ * missing dependencies, and strict type-safety standards.
+ */
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { getSensitiveMuraqibEnvKeys } from "./env-options.js";
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
-export interface ConfigAuditResult { // muraqib-ignore-dead: auto-suppressed by script for ConfigAuditResult
+export interface ConfigAuditResult {
   isValid: boolean;
   reports: string[];
   missingFiles: string[];
@@ -24,14 +21,17 @@ export interface ConfigAuditResult { // muraqib-ignore-dead: auto-suppressed by 
 
 const REQUIRED_CONFIG_FILES = ["tsconfig.json", ".gitignore", "package.json"];
 
+// تم تحسين مصفوفة الكلمات المفتاحية لتصبح أكثر دقة وتتجنب المطابقات الجزئية الخاطئة
 const SECURITY_SENSITIVE_KEYS = [
   "password",
   "secret",
   "token",
   "api_key",
+  "apikey",
   "private_key",
-  "auth",
   "credential",
+  "auth_token",
+  "access_token",
 ];
 
 function stripJsonComments(input: string): string {
@@ -45,30 +45,30 @@ function stripJsonComments(input: string): string {
     const nextChar = input[i + 1];
 
     if (inLineComment) {
-    if (char === "\n") {
-      inLineComment = false;
-      result += char;
-    }
-    continue;
+      if (char === "\n") {
+        inLineComment = false;
+        result += char;
+      }
+      continue;
     }
 
     if (inBlockComment) {
-    if (char === "*" && nextChar === "/") {
-      inBlockComment = false;
-      i++;
-    }
-    continue;
+      if (char === "*" && nextChar === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
     }
 
     if (inString) {
-    result += char;
-    if (char === "\\") {
-      result += input[i + 1] ?? "";
-      i++;
-    } else if (char === '"') {
-      inString = false;
-    }
-    continue;
+      result += char;
+      if (char === "\\") {
+        result += input[i + 1] ?? "";
+        i++;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
     }
 
     if (char === '"') {
@@ -83,7 +83,6 @@ function stripJsonComments(input: string): string {
     } else {
       result += char;
     }
-// muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 
   return result;
@@ -95,7 +94,7 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   const invalidConfigs: string[] = [];
   const insecureConfigs: string[] = [];
 
-  // التأكد من استخدام الـ scanner المشترك إذا لزم الأمر في مرور الملفات
+  // التأكد من استخدام الـ scanner المشترك
   scanProjectFiles(targetPath, ["ts", "js"]);
 
   // Check required config files
@@ -161,8 +160,9 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
       }
 
       const pkgStr = JSON.stringify(pkg);
+      // استخدام حدود الكلمات (Word Boundaries) لمنع التطابق الجزئي الخاطئ مثل "author" مع "auth"
       for (const key of SECURITY_SENSITIVE_KEYS) {
-        const regex = new RegExp(`"${key}\\s*":\\s*"[^"]+"`, "i");
+        const regex = new RegExp(`"(?:[^"]*_)?${key}(?:_[^"]*)?\\s*":\\s*"[^"]+"`, "i");
         if (regex.test(pkgStr)) {
           insecureConfigs.push(`package.json contains exposed ${key}`);
           reports.push(`Security risk: package.json exposes ${key} in plaintext`);
@@ -174,7 +174,7 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
     }
   }
 
-  // Check .env files for exposed secrets (عام + مفاتيح Muraqib الخاصة نفسها)
+  // Check .env files for exposed secrets with strict boundary matching
   const sensitiveMuraqibKeys = getSensitiveMuraqibEnvKeys();
   const envFiles = fs.readdirSync(targetPath).filter((f) => f.startsWith(".env"));
   for (const envFile of envFiles) {
@@ -182,7 +182,8 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
     const envContent = fs.readFileSync(envPath, "utf-8");
 
     for (const key of SECURITY_SENSITIVE_KEYS) {
-      const regex = new RegExp(`${key}=.+`, "i");
+      // تدقيق دقيق يعتمد على حدود المتغيرات البيئية الحقيقية
+      const regex = new RegExp(`^(?:[A-Z0-9_]*_)?${key.toUpperCase()}(?:_[A-Z0-9_]*)?\\s*=\\s*.+`, "im");
       if (regex.test(envContent)) {
         insecureConfigs.push(`${envFile} contains ${key}`);
         reports.push(`Security risk: ${envFile} exposes ${key} — use a secrets manager`);
