@@ -253,6 +253,21 @@ npm install
 
 # Build the project
 npm run build
+```
+
+### Optional Express/Prisma demo
+
+The demo server is maintained as a separate package so its dependencies are not installed with the core CLI:
+
+Copy `examples/express-prisma/.env.example` to `examples/express-prisma/.env` before setting up the database.
+
+```bash
+npm install --prefix examples/express-prisma
+npm run db:push --prefix examples/express-prisma
+npm run dev-server
+```
+
+The demo listens on port `3000` by default. Set `PORT` or `DATABASE_URL` in `examples/express-prisma/.env` to customize it.
 
 ## 💻 CLI Usage
 

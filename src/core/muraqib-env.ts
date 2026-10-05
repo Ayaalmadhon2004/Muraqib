@@ -1,5 +1,3 @@
-import { isString } from '@sindresorhus/is'; // مكتبة الفحص النظيف اللي مستخدمها Renovate
-
 export type EnvUpdateStrategy = 'replace' | 'keep-both' | 'merge'; // muraqib-ignore-dead: auto-suppressed by script for EnvUpdateStrategy
 
 export interface NewEnvConfig { // muraqib-ignore-dead: auto-suppressed by script for NewEnvConfig
@@ -49,7 +47,7 @@ export function getNewEnvValue({ // muraqib-ignore-dead: auto-suppressed by scri
       if (cleanCurrent.includes(',') || cleanNew.includes(',')) {
         // ندمج القيم ونحذف المكرر باستخدام Set لضمان نظافة الداتا
         const uniqueValues = Array.from(new Set([...cleanCurrent.split(','), ...cleanNew.split(',')]));
-        return uniqueValues.filter(isString).join(',');
+        return uniqueValues.filter((value): value is string => typeof value === 'string').join(',');
       }
       return `${cleanCurrent};${cleanNew}`;
 // muraqib-unreachable: flagged by automated triage. Review before removal.

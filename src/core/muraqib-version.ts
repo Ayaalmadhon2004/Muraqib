@@ -1,4 +1,3 @@
-import is from '@sindresorhus/is';
 import semver from 'semver';
  
 export type VersionUpdateStrategy = 'replace' | 'keep-both';
@@ -17,7 +16,7 @@ export function getMuraqibNewVersionValue({
   packageName: _packageName,
 }: MuraqibVersionConfig): string | null {
   
-  if (!is.string(currentVersion) || !is.string(newVersion)) { 
+  if (typeof currentVersion !== 'string' || typeof newVersion !== 'string') {
     return currentVersion; 
 // muraqib-unreachable: flagged by automated triage. Review before removal.
   }
