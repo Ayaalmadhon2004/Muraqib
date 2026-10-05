@@ -7,12 +7,12 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
-    "dev-server": "tsx watch src/server.ts",
+    "dev-server": "npm --prefix examples/express-prisma run dev",
     "lint": "eslint . --ext .ts,.tsx",
     "start": "node dist/index.js",
     "audit": "tsx src/index.ts --url http://localhost:3000 --security-url http://localhost:3000 --silent",
     "audit:ci": "tsx scripts/collect-audit.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run"
   },
   "repository": {
     "type": "git",
@@ -26,10 +26,6 @@
   },
   "homepage": "https://github.com/Ayaalmadhon2004/Muraqib#readme",
   "devDependencies": {
-    "@standard-schema/spec": "^1.1.0",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/express": "^5.0.6",
-    "@types/glob": "^8.1.0",
     "@types/node": "^25.9.2",
     "@types/semver": "^7.7.1",
     "@typescript-eslint/eslint-plugin": "^8.68.0",
@@ -37,20 +33,16 @@
     "eslint": "^9.39.5",
     "sharp": "^0.35.4",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^2.1.8"
   },
   "dependencies": {
-    "@sindresorhus/is": "^8.1.0",
     "arktype": "^2.2.0",
     "axios": "^1.17.0",
-    "bcryptjs": "^3.0.3",
-    "compression": "^1.8.1",
+    "chalk": "^5.6.2",
     "cron-parser": "^5.5.0",
-    "express": "^5.2.1",
     "glob": "^13.0.6",
-    "helmet": "^6.2.0",
     "semver": "^7.8.2",
-    "sharp": "^0.35.4",
     "valibot": "^1.4.0",
     "zod": "^4.4.3"
   }

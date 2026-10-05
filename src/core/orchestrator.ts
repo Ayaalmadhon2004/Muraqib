@@ -1,7 +1,6 @@
 import { execSync } from 'child_process';
-import is from '@sindresorhus/is'; 
 import semver from 'semver';
-import { getMuraqibNewVersionValue } from './muraqib-version.js';
+import { getMuraqibNewVersionValue, type VersionUpdateStrategy } from './muraqib-version.js';
 import { MURAQIB_LOCAL_PRESETS, fetchRemoteMuraqibPresets } from '../config/presets.js';
 import type { PackageGroup } from '../config/presets.js'; 
 import { detectProjectPackageManager } from '../utils/manager-detector.js'; 
@@ -69,13 +68,13 @@ export async function runMuraqibUpgradeOrchestrator({
 }: OrchestratorConfig): Promise<{ updatedVersion: string | null; schemaMigrated: boolean; skipReason?: string }> {
 
   let schemaMigrated = false;
-  if (!is.string(packageName) || is.emptyStringOrWhitespace(packageName)) {
+  if (typeof packageName !== 'string' || packageName.trim().length === 0) {
     console.error('❌ [Muraqib Orchestrator Error]: Invalid package name.');
     return { updatedVersion: null, schemaMigrated: false };
 // muraqib-unreachable: flagged by automated triage. Review before removal.
   }
 
-  if (!is.string(newVersion) || is.emptyStringOrWhitespace(newVersion)) {
+  if (typeof newVersion !== 'string' || newVersion.trim().length === 0) {
     console.error(`❌ [Muraqib Orchestrator Error]: Invalid new version for ${packageName}.`);
 // muraqib-unreachable: flagged by automated triage. Review before removal.
     return { updatedVersion: null, schemaMigrated: false };
@@ -100,7 +99,7 @@ export async function runMuraqibUpgradeOrchestrator({
 
   let activePresets: PackageGroup[] = MURAQIB_LOCAL_PRESETS;
  
-  if (remotePresetUrl && is.string(remotePresetUrl) && !is.emptyStringOrWhitespace(remotePresetUrl)) {
+  if (remotePresetUrl && remotePresetUrl.trim().length > 0) {
     console.log(`🌐 [Muraqib Remote Engine]: Fetching centralized presets from URL...`);
     activePresets = await fetchRemoteMuraqibPresets(remotePresetUrl);
   }
@@ -114,12 +113,12 @@ export async function runMuraqibUpgradeOrchestrator({
     console.log(`🔗 [Grouping Activation]: Muraqib will sync and update all sibling packages: (${matchedPreset.packages.join(', ')}) simultaneously.`);
   }
 
-  const internalStrategy = rangeStrategy === 'widen' ? 'keep-both' : rangeStrategy;
+  const internalStrategy: VersionUpdateStrategy = rangeStrategy === 'widen' ? 'keep-both' : 'replace';
 
   const updatedVersionValue = getMuraqibNewVersionValue({
     currentVersion: currentValue,
     newVersion,
-    updateStrategy: internalStrategy as any,
+    updateStrategy: internalStrategy,
     packageName,
   });
 
@@ -168,4 +167,3 @@ export async function runMuraqibUpgradeOrchestrator({
     schemaMigrated,
   };
 }
-

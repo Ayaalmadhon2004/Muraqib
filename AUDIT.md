@@ -5,6 +5,8 @@ This repository includes a lightweight audit runner (Muraqib) to check images, b
 How to run the audit locally
 
 - Start the local server (optional, recommended for network/security checks):
+  - Copy examples/express-prisma/.env.example to examples/express-prisma/.env
+  - npm install --prefix examples/express-prisma
   - npm run dev-server
   - server defaults to http://localhost:3000 when running locally
 

@@ -1,15 +1,13 @@
 /**
- * 🛡️ Config & Security Guard (`config-guard.ts`)
- *
- * The `config-guard` module is an automated auditing engine designed to inspect
- * project configuration files and environment settings for security vulnerabilities,
- * missing dependencies, and strict type-safety standards.
+ * Config and security audit for required project files, TypeScript strictness,
+ * exposed secrets, and Git tracking/ignore protection for environment files.
+ * Secret detection uses exact key-word boundaries plus JWT, private-key,
+ * credential-bearing URL, and high-entropy value patterns.
  */
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { getSensitiveMuraqibEnvKeys } from "./env-options.js";
-import { scanProjectFiles } from "../utils/file-scanner.js";
 
 export interface ConfigAuditResult {
   isValid: boolean;
@@ -24,7 +22,10 @@ const REQUIRED_CONFIG_FILES = ["tsconfig.json", ".gitignore", "package.json"];
 // تم تحسين مصفوفة الكلمات المفتاحية لتصبح أكثر دقة وتتجنب المطابقات الجزئية الخاطئة
 const SECURITY_SENSITIVE_KEYS = [
   "password",
+  "passwd",
+  "private",
   "secret",
+  "secrets",
   "token",
   "api_key",
   "apikey",
@@ -113,27 +114,33 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
       const rawTsconfig = fs.readFileSync(tsconfigPath, "utf-8");
       const withoutComments = stripJsonComments(rawTsconfig);
       const stripped = withoutComments.replace(/,(\s*[}\]])/g, "$1");
-      const tsconfig = JSON.parse(stripped);
+      const parsed: unknown = JSON.parse(stripped);
+      const tsconfig = isRecord(parsed) ? parsed : {};
+      const compilerOptions = isRecord(tsconfig.compilerOptions) ? tsconfig.compilerOptions : undefined;
 
-      if (!tsconfig.compilerOptions) {
+      if (!compilerOptions) {
         invalidConfigs.push("tsconfig.json missing compilerOptions");
         reports.push("tsconfig.json: missing compilerOptions section");
       } else {
-        if (tsconfig.compilerOptions.strict !== true) {
+        if (compilerOptions.strict !== true) {
           insecureConfigs.push("tsconfig.json: strict mode disabled");
           reports.push("tsconfig.json: strict mode is disabled — enable for type safety");
         }
-        if (tsconfig.compilerOptions.noImplicitAny !== true) {
+        if (compilerOptions.noUncheckedIndexedAccess !== true) {
+          insecureConfigs.push("tsconfig.json: noUncheckedIndexedAccess disabled");
+          reports.push("tsconfig.json: noUncheckedIndexedAccess is disabled — enable for safer indexed access");
+        }
+        if (compilerOptions.noImplicitAny !== true) {
           insecureConfigs.push("tsconfig.json: noImplicitAny disabled");
           reports.push("tsconfig.json: noImplicitAny is disabled — enable to catch implicit any types");
         }
-        if (tsconfig.compilerOptions.noUnusedLocals !== true) {
+        if (compilerOptions.noUnusedLocals !== true) {
           reports.push("tsconfig.json: noUnusedLocals is disabled — enable to catch dead code");
         }
-        if (tsconfig.compilerOptions.noUnusedParameters !== true) {
+        if (compilerOptions.noUnusedParameters !== true) {
           reports.push("tsconfig.json: noUnusedParameters is disabled — enable to catch unused params");
         }
-        if (tsconfig.compilerOptions.exactOptionalPropertyTypes !== true) {
+        if (compilerOptions.exactOptionalPropertyTypes !== true) {
           reports.push("tsconfig.json: exactOptionalPropertyTypes is disabled — enable for stricter optional types");
         }
       }
@@ -144,19 +151,18 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
   }
 
   // Check package.json
+  const muraqibKeys = new Set(getSensitiveMuraqibEnvKeys().map((key) => key.toUpperCase()));
   const packagePath = path.join(targetPath, "package.json");
   if (fs.existsSync(packagePath)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
+      const parsed: unknown = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
+      const pkg = isRecord(parsed) ? parsed : {};
+      const scripts = isRecord(pkg.scripts) ? pkg.scripts : {};
 
-      if (!pkg.scripts || !pkg.scripts.test) {
-        reports.push("package.json: missing test script");
-      }
-      if (!pkg.scripts || !pkg.scripts.build) {
-        reports.push("package.json: missing build script");
-      }
-      if (!pkg.scripts || !pkg.scripts.lint) {
-        reports.push("package.json: missing lint script");
+      for (const script of ["test", "build", "lint"]) {
+        if (typeof scripts[script] !== "string" || scripts[script] === "") {
+          reports.push(`package.json: missing ${script} script`);
+        }
       }
 
       const pkgStr = JSON.stringify(pkg);
@@ -165,9 +171,9 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
         const regex = new RegExp(`"(?:[^"]*_)?${key}(?:_[^"]*)?\\s*":\\s*"[^"]+"`, "i");
         if (regex.test(pkgStr)) {
           insecureConfigs.push(`package.json contains exposed ${key}`);
-          reports.push(`Security risk: package.json exposes ${key} in plaintext`);
+          reports.push(`Security risk: package.json exposes a secret in ${key}`);
         }
-      }
+      });
     } catch (e) {
       invalidConfigs.push("package.json is invalid JSON");
       reports.push("package.json: invalid JSON format");
@@ -197,34 +203,38 @@ export function performConfigAudit(targetPath: string): ConfigAuditResult {
         reports.push(`Security risk: ${envFile} exposes ${envKey} directly — consider a secrets manager`);
       }
     }
+  };
 
-    // Check if .env is in .gitignore
-    const gitignorePath = path.join(targetPath, ".gitignore");
-    if (fs.existsSync(gitignorePath)) {
-      const gitignore = fs.readFileSync(gitignorePath, "utf-8");
-      if (!gitignore.includes(".env")) {
-        insecureConfigs.push(".env not in .gitignore");
-        reports.push("Security risk: .env files are not in .gitignore — secrets may be committed");
-      }
-    }
+  try {
+    collectEnvFiles(targetPath);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    insecureConfigs.push("Unable to scan .env files");
+    reports.push(`Security audit could not scan .env files: ${reason}`);
   }
 
-  // Check for .env in repo (shouldn't be committed)
-  const gitPath = path.join(targetPath, ".git");
-  if (fs.existsSync(gitPath)) {
-    const trackedEnv = path.join(targetPath, ".env");
-    if (fs.existsSync(trackedEnv)) {
-      try {
-        const isTracked = execSync("git ls-files .env", { cwd: targetPath, encoding: "utf-8" }).trim();
-        if (isTracked) {
-          insecureConfigs.push(".env is tracked by git");
-          reports.push("Critical security risk: .env is tracked by git — secrets are exposed in version control");
+  for (const envPath of envFiles) {
+    const relativePath = path.relative(targetPath, envPath).replace(/\\/g, "/");
+    try {
+      const contents = fs.readFileSync(envPath, "utf-8");
+      for (const { key, value } of envEntries(contents)) {
+        if (isExposedValue(value, isSensitiveKey(key, muraqibKeys))) {
+          pushUnique(insecureConfigs, `${relativePath} contains exposed ${key}`);
+          pushUnique(
+            reports,
+            `Security risk: ${relativePath} exposes a secret through ${key} — use a secrets manager`,
+          );
         }
-      } catch (e) {
-        // git command failed, skip
       }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      pushUnique(insecureConfigs, `Unable to read ${relativePath}`);
+      pushUnique(reports, `Security audit could not read ${relativePath}: ${reason}`);
     }
   }
+
+  checkGitEnvFiles(targetPath, insecureConfigs, reports);
+  checkEnvIgnoreRules(targetPath, insecureConfigs, reports);
 
   return {
     isValid: reports.length === 0,

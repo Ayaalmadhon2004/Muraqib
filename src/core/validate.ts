@@ -11,14 +11,14 @@ async function getChalk() {
   }
   return chalkInstance;
 }
- // muraqib-ignore-dead: auto-suppressed by script for createMuraqibEnv
+
 export async function createMuraqibEnv(rawEnv: Record<string, string | undefined>) {
   const sanitizedEnv: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawEnv)) { 
     if (value !== undefined) {
       let cleanValue = value.trim();
       if (cleanValue.startsWith('"') && cleanValue.endsWith('"')) {
-        cleanValue = cleanValue.slice(1, -1);
+        cleanValue = cleanValue.slice(1, -1).trim();
       }
       sanitizedEnv[key] = cleanValue;
     }
@@ -36,7 +36,6 @@ export async function createMuraqibEnv(rawEnv: Record<string, string | undefined
       throw new Error(errorMessage);
     }
   }
-// muraqib-unreachable: flagged by automated triage. Review before removal.
 
   return sanitizedEnv;
 }

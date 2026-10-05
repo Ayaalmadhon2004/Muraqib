@@ -1,1 +1,0 @@
-{"version":3,"file":"remove-migration.d.ts","sourceRoot":"","sources":["remove-migration.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,wBAAwB,EAAE,MAAM,yBAAyB,CAAC;AAEnE,qBAAa,uBAAwB,SAAQ,wBAAwB;IACnE,SAAkB,YAAY,EAAE,MAAM,CAAC;gBAErC,YAAY,EAAE,MAAM,EACpB,cAAc,EAAE,MAAM,CAAC,MAAM,EAAE,GAAG,CAAC,EACnC,cAAc,EAAE,MAAM,CAAC,MAAM,EAAE,GAAG,CAAC;IAM5B,GAAG,IAAI,IAAI;CAGrB"}

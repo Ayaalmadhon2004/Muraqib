@@ -1,8 +1,8 @@
-export const auditPerformance = (resourceCount: number, protocol: string, cookiesSize: number) => { // muraqib-ignore-dead: auto-suppressed by script for auditPerformance
+export const auditPerformance = (_resourceCount: number, protocol: string, cookiesSize: number) => {// muraqib-ignore-dead: auto-suppressed by script for auditPerformance
   const findings = [];
 
   // Use resourceCount to provide more precise recommendations
-  if (typeof resourceCount === 'number' && resourceCount > 50) {
+  if (typeof _resourceCount === 'number' && _resourceCount > 50) {
     findings.push('Note: The page loads more than 50 resources which may indicate heavy bundling or many network requests.');
   }
 

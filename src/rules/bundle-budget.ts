@@ -1,11 +1,7 @@
-// src/rules/bundle-budget.ts
 import fs from 'fs';
 import path from 'path';
 
-/**
- * 1. ميزة فحص الحاجة للتحميل الكسول (Lazy Loading / Dynamic Imports)
- */
-export const checkLazyLoadingNecessity = (filePath: string): string[] => { // muraqib-ignore-dead: auto-suppressed by script for checkLazyLoadingNecessity
+export const checkLazyLoadingNecessity = (filePath: string): string[] => {
     if (!fs.existsSync(filePath)) return [];
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     
@@ -28,10 +24,7 @@ export const checkLazyLoadingNecessity = (filePath: string): string[] => { // mu
     return suggestions;
 };
 
-/**
- * 2. ميزة فحص الاستيرادات الفاطسة والثقيلة (Heavy Structural Imports)
- */
-export const checkHeavyImports = (filePath: string): string[] => { // muraqib-ignore-dead: auto-suppressed by script for checkHeavyImports
+export const checkHeavyImports = (filePath: string): string[] => {
     if (!fs.existsSync(filePath)) return [];
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const suggestions: string[] = [];
@@ -53,10 +46,7 @@ export const checkHeavyImports = (filePath: string): string[] => { // muraqib-ig
     return suggestions;
 };
 
-/**
- * 3. ميزة فحص إعدادات الـ Minification لضغط الملفات (next.config.js)
- */
-export const checkMinificationSettings = (projectRoot: string): string[] => { // muraqib-ignore-dead: auto-suppressed by script for checkMinificationSettings
+export const checkMinificationSettings = (projectRoot: string): string[] => {
     const nextConfigPath = path.join(projectRoot, 'next.config.js');
     const suggestions: string[] = [];
 
@@ -73,15 +63,11 @@ export const checkMinificationSettings = (projectRoot: string): string[] => { //
     return suggestions;
 };
 
-/**
- * 🌟 4. الدالة الرئيسية الشاملة لـ Bundle Budget (الآن ديناميكية بالكامل وبدون قيود)
- */
-export const runComprehensiveBundleAudit = () => {
+export const runComprehensiveBundleAudit = (targetPath?: string) => {
     const LIMIT_KB = 14; 
-    const projectRoot = process.cwd(); // تعيين مجلد العمل الحالي تلقائياً
+    const projectRoot = targetPath || process.cwd();
     const supportedExtensions = ['.tsx', '.ts', '.jsx', '.js', '.svelte', '.vue'];
 
-    // دالة البحث التراجعي الذكي لقطف أول ملف كود نشط في مشروع المطور
     function findActiveWorkspaceFile(dir: string): string | null {
         const files = fs.readdirSync(dir);
         
@@ -89,7 +75,6 @@ export const runComprehensiveBundleAudit = () => {
             const fullPath = path.join(dir, file);
             const stat = fs.statSync(fullPath);
             
-            // تخطي مجلدات النظام والـ dependencies لحماية الـ CPU
             if (file === 'node_modules' || file === '.next' || file === 'dist' || file === 'build' || file.startsWith('.')) {
                 continue;
             }
@@ -100,11 +85,9 @@ export const runComprehensiveBundleAudit = () => {
             } else {
                 const ext = path.extname(file);
                 if (supportedExtensions.includes(ext)) {
-// muraqib-unreachable: flagged by automated triage. Review before removal.
                     return fullPath;
                 }
             }
-// muraqib-unreachable: flagged by automated triage. Review before removal.
         }
         return null;
     }
@@ -126,7 +109,6 @@ export const runComprehensiveBundleAudit = () => {
             console.log(`\n🛠️ [Muraqib Auto-Diagnostics] Scanning matched files text structures for quick automated fixes...`);
             console.log(`------------------------------------------------------------------------------------------------`);
 
-            // تشغيل الفحوصات التشخيصية الثلاثة وتجميع المقترحات
             const lazySuggestions = checkLazyLoadingNecessity(activeFilePath);
             lazySuggestions.forEach(msg => console.warn(msg));
 
