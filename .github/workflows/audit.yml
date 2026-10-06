@@ -24,21 +24,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Start local audit target
-        run: npx tsx src/server.ts > server.log 2>&1 &
-
-      - name: Wait for local server to come up
-        run: |
-          for i in $(seq 1 30); do
-            if curl -fsS http://localhost:3000 >/dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Local audit target did not start in time." >&2
-          cat server.log || true
-          exit 1
-
       - name: Run audit and save report
         run: npm run audit:ci
 
