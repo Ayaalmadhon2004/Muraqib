@@ -6,9 +6,13 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { loadEnv } from "../src/env.js";
 import { runAudit } from "../src/index.js";
 
 const reportPath = path.resolve(process.cwd(), "audit-report.json");
+
+// Load environment variables from .env file
+loadEnv({ cwd: process.cwd(), verbose: false });
 
 let result: Awaited<ReturnType<typeof runAudit>>;
 let auditError: string | null = null;
