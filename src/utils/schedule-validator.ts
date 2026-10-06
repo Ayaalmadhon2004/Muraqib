@@ -1,7 +1,7 @@
-import * as cronParser from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 
-export function isWithinSchedule(scheduleString?: string): boolean { 
-  if (!scheduleString || scheduleString.trim() === '') { 
+export function isWithinSchedule(scheduleString?: string): boolean {
+  if (!scheduleString || scheduleString.trim() === '') {
     return true;
   }
 
@@ -13,7 +13,7 @@ export function isWithinSchedule(scheduleString?: string): boolean {
   }
 
   try {
-    const interval = (cronParser as any).parseExpression(scheduleString);
+    const interval = CronExpressionParser.parse(scheduleString);
     const prevExecution = interval.prev().toDate();
     const diffInMinutes = Math.abs(now.getTime() - prevExecution.getTime()) / (1000 * 60);
 

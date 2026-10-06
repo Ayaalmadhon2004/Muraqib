@@ -6,12 +6,14 @@ import axios from 'axios';
     console.log('status', res.status);
     console.log('headers', res.headers);
     console.log('data:', res.data);
-  } catch (e:any) {
-    console.error('fetch error:', e.message);
-    if (e.response) {
-      console.error('status', e.response.status);
-      console.error('headers', e.response.headers);
-      const data = String(e.response.data);
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error('fetch error:', err.message);
+    const axiosErr = e as { response?: { status: number; headers: unknown; data: unknown } };
+    if (axiosErr.response) {
+      console.error('status', axiosErr.response.status);
+      console.error('headers', axiosErr.response.headers);
+      const data = String(axiosErr.response.data);
       console.error('data', data);
       const fs = await import('fs');
       await fs.promises.mkdir('logs', { recursive: true });

@@ -6,7 +6,7 @@ export const TagController = { // muraqib-ignore-dead: auto-suppressed by script
   async getTags(_req: Request, res: Response, next: NextFunction) {
     try {
       const tags = await TagService.getAllTags();
-      res.json({ tags: tags.map((t: any) => t.name) });
+      res.json({ tags: tags.map((t: { name: string }) => t.name) });
     } catch (error) {
       next(error);
     }

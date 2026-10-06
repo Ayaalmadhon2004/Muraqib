@@ -1,4 +1,6 @@
-let chalkInstance: any = undefined;
+// chalk is loaded dynamically; null means "unavailable", undefined means "not yet tried"
+type ChalkLike = { red: { bold: (s: string) => string } };
+let chalkInstance: ChalkLike | null | undefined = undefined;
 
 async function getChalk() {
   if (chalkInstance === undefined) {

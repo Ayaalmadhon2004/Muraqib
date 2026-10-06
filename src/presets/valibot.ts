@@ -1,4 +1,4 @@
-import { optional, string, picklist, pipe, url, parse } from "valibot";
+import { optional, string, picklist, pipe, url, object, parse } from "valibot";
 import type { VercelEnv, NeonVercelEnv } from "../presets.js";
 
 export const vercel = (): Readonly<VercelEnv> => { // muraqib-ignore-dead: auto-suppressed by script for vercel
@@ -9,10 +9,7 @@ export const vercel = (): Readonly<VercelEnv> => { // muraqib-ignore-dead: auto-
       VERCEL_ENV: optional(picklist(["development", "preview", "production"])),
       VERCEL_URL: optional(string()),
     };
-    const parsedData = parse(
-      { type: 'object', entries: vercelSchema } as any, 
-      process.env
-    );
+    const parsedData = parse(object(vercelSchema), process.env);
 
     return parsedData as unknown as Readonly<VercelEnv>;
   } catch (error) {
@@ -27,10 +24,7 @@ export const neonVercel = (): Readonly<NeonVercelEnv> => {
       DATABASE_URL_UNPOOLED: optional(string()),
     };
 
-    const parsedData = parse(
-      { type: 'object', entries: neonSchema } as any, 
-      process.env
-    );
+    const parsedData = parse(object(neonSchema), process.env);
 
     return parsedData as unknown as Readonly<NeonVercelEnv>;
   } catch (error) {

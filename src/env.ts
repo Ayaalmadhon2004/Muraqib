@@ -173,11 +173,11 @@ export type InferSchema<T extends GuardSchema> = {
     ? O // muraqib-ignore-dead: auto-suppressed by script for IntersectExtension
     : T[K] extends { infer: infer O }
     ? O
-    : any;
+    : unknown;
 };
 
-export type IntersectExtension<T extends any[]> = T extends [infer Head, ...infer Tail] // muraqib-ignore-dead: auto-suppressed by script for ErrorMessage
-  ? Head extends Record<string, any>
+export type IntersectExtension<T extends unknown[]> = T extends [infer Head, ...infer Tail] // muraqib-ignore-dead: auto-suppressed by script for ErrorMessage
+  ? Head extends Record<string, unknown>
     ? Head & IntersectExtension<Tail>
     : IntersectExtension<Tail>
   : unknown;
@@ -191,7 +191,7 @@ export interface CreateEnvOptions<
   TPrefix extends string = "",
   TServer extends GuardSchema = Record<string, never>,
   TClient extends GuardSchema = Record<string, never>,
-  TExtends extends any[] = []
+  TExtends extends unknown[] = []
 > {
   clientPrefix?: TPrefix;
   server?: {
@@ -230,7 +230,7 @@ export function createEnv<
   TPrefix extends string = "",
   TServer extends GuardSchema = Record<string, never>,
   TClient extends GuardSchema = Record<string, never>,
-  TExtends extends any[] = []
+  TExtends extends unknown[] = []
 >(
   opts: CreateEnvOptions<TPrefix, TServer, TClient, TExtends>
 ): (InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends>) | null {
@@ -259,17 +259,20 @@ export function createEnv<
     if (!opts.silent) {
       console.log(`⏭️ [Muraqib Guards]: Validation skipped (skipValidation=true).`);
     }
-    return process.env as any;
+    return process.env as unknown as InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends>;
   }
 
-  const rawSchemaFields: Record<string, any> = {
-    ...opts.server,
-    ...opts.client,
+  // The server/client fields use branded error-message types at compile time
+  // for developer-facing constraint violations. At runtime they are always ZodTypeAny.
+  const rawSchemaFields: Record<string, z.ZodTypeAny> = {
+    ...(opts.server as Record<string, z.ZodTypeAny>),
+    ...(opts.client as Record<string, z.ZodTypeAny>),
   };
 
   const combinedSchema = z.object(rawSchemaFields);
   const rawEnv = opts.runtimeEnvStrict ?? opts.runtimeEnv ?? process.env;
-  const processedEnv: Record<string, any> = { ...rawEnv };
+  // rawEnv may contain unknown at TS level (runtimeEnvStrict), so cast after copy
+  const processedEnv: Record<string, string | undefined> = { ...rawEnv } as Record<string, string | undefined>;
 
   if (opts.extends && Array.isArray(opts.extends)) {
     for (const extendedEnv of opts.extends) {
@@ -312,8 +315,8 @@ export function createEnv<
     }
 
     const error = new Error(formattedMessage);
-    (error as any).isMuraqibCustom = true;
-    (error as any).errors = issues;
+    (error as Error & { isMuraqibCustom: boolean; errors: { path: string; message: string }[] }).isMuraqibCustom = true;
+    (error as Error & { errors: { path: string; message: string }[] }).errors = issues;
     throw error;
   }
 
@@ -324,7 +327,7 @@ export function createEnv<
     emptyStringAsUndefined: shouldSanitize,
   });
 
-  return (validatedGuard?.data ?? validatedGuard) as any;
+  return (validatedGuard?.data ?? validatedGuard) as unknown as InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends>;
 }
 
 // =========================================================================
@@ -334,7 +337,7 @@ export function safeCreateEnv<
   TPrefix extends string = "",
   TServer extends GuardSchema = Record<string, never>,
   TClient extends GuardSchema = Record<string, never>,
-  TExtends extends any[] = []
+  TExtends extends unknown[] = []
 >(
   opts: CreateEnvOptions<TPrefix, TServer, TClient, TExtends>
 ): {
@@ -352,12 +355,14 @@ export function safeCreateEnv<
     if (data === null) {
       return { success: false, error: [{ path: "schedule", message: "Outside allowed schedule window." }] };
     }
-    return { success: true, data: data as any };
-  } catch (e: any) {
-    if (e.isMuraqibCustom && Array.isArray(e.errors)) {
-      return { success: false, error: e.errors };
+    return { success: true, data: data as InferSchema<TServer> & InferSchema<TClient> & IntersectExtension<TExtends> };
+  } catch (e: unknown) {
+    type MuraqibError = Error & { isMuraqibCustom?: boolean; errors?: { path: string; message: string }[] };
+    const me = e as MuraqibError;
+    if (me.isMuraqibCustom && Array.isArray(me.errors)) {
+      return { success: false, error: me.errors };
     }
-    return { success: false, error: [{ path: "unknown", message: e.message ?? "Unknown error" }] };
+    return { success: false, error: [{ path: "unknown", message: me instanceof Error ? me.message : "Unknown error" }] };
   }
 }
 
@@ -367,7 +372,7 @@ export function safeCreateEnv<
 export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
   userSchema: T,
   options: {
-    runtimeEnv: Record<string, any>;
+    runtimeEnv: Record<string, string | undefined>;
     isServer?: boolean;
     emptyStringAsUndefined?: boolean;
     presets?: PresetInput[];
@@ -396,16 +401,22 @@ export function createEnvWithPresets<T extends Record<string, z.ZodTypeAny>>(
     }
   }
 
-  return createEnv({
-    server: serverSchema,
+  // Build the options object, only including defined optional fields to satisfy exactOptionalPropertyTypes.
+  // The generic parameters here use `any` intentionally — this wrapper accepts any schema shape.
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const callOpts: CreateEnvOptions<any, any, any, any> = {
+    server: serverSchema as any,
+  /* eslint-enable @typescript-eslint/no-explicit-any */
     runtimeEnv: options.runtimeEnv ?? process.env,
-    emptyStringAsUndefined: options.emptyStringAsUndefined,
-    isServer: options.isServer,
-    schedule: options.schedule,
-    skipValidation: options.skipValidation,
-    silent: options.silent,
-    formatError: options.formatError,
-    envFilePath: options.envFilePath,
-    preserveProcessEnv: options.preserveProcessEnv,
-  } as any) as any;
+  };
+  if (options.emptyStringAsUndefined !== undefined) callOpts.emptyStringAsUndefined = options.emptyStringAsUndefined;
+  if (options.isServer !== undefined) callOpts.isServer = options.isServer;
+  if (options.schedule !== undefined) callOpts.schedule = options.schedule;
+  if (options.skipValidation !== undefined) callOpts.skipValidation = options.skipValidation;
+  if (options.silent !== undefined) callOpts.silent = options.silent;
+  if (options.formatError !== undefined) callOpts.formatError = options.formatError;
+  if (options.envFilePath !== undefined) callOpts.envFilePath = options.envFilePath;
+  if (options.preserveProcessEnv !== undefined) callOpts.preserveProcessEnv = options.preserveProcessEnv;
+
+  return createEnv(callOpts) as z.infer<z.ZodObject<T>> | null;
 }
