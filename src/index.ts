@@ -14,27 +14,15 @@ import { performAsyncAudit } from "./core/async-guard.js";
 import { performConfigAudit } from "./core/config-guard.js";
 
 import { runPerformanceAudit } from "./core/performance/auditor.js";
+import { analyzeHttpProfile } from "./core/performance/optimizer-engine.js";
+import { probeHttp } from "./core/performance/http-probe.js";
 import { runMuraqibUpgradeOrchestrator } from "./core/orchestrator.js";
 
 export { createEnv, createEnvWithPresets, loadEnv, safeCreateEnv } from "./env.js";
 export * from "./core/types.js";
 export * from "./core/standard.js";
 
-export const auditPerformance = (_resourceCount: number, protocol: string, cookiesSize: number) => {
-  const findings: string[] = [];
-
-  if (cookiesSize > 2 * 1024) { 
-    findings.push("تحذير: حجم الكوكيز يتجاوز 2KB. كل طلب سيتم تحميله ببيانات غير ضرورية.");
-  }
-
-  if (protocol === 'HTTP/2') {
-    findings.push("ملاحظة: أنتِ تستخدمين HTTP/2. تأكدي من إزالة الـ Domain Sharding والـ Bundle-ing غير الضروري.");
-  } else {
-    findings.push("تنبيه: أنتِ على بروتوكول قديم (HTTP/1.x). قد تحتاجين لدمج الملفات (Concatenation) للالتفاف على القيود.");
-  }
-
-  return findings;
-};
+export { auditPerformance, analyzeHttpProfile } from "./core/performance/optimizer-engine.js";
 
 export const analyzeRenderBlocking = (htmlContent: string) => {
   const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
@@ -59,14 +47,16 @@ export const analyzeRenderBlocking = (htmlContent: string) => {
   };
 };
 
-function runOptimizerAudit(targetPath: string) {
-  let htmlContent = "";
-  try {
-    const htmlPath = path.join(targetPath, "index.html");
-    if (fs.existsSync(htmlPath)) {
-      htmlContent = fs.readFileSync(htmlPath, "utf-8");
-    }
-  } catch { /* ignore missing HTML */ }
+async function runOptimizerAudit(targetPath: string, url: string) {
+  // Protocol and cookie weight are measured from the live server, never inferred.
+  const probe = await probeHttp(url);
+  if (!probe.reachable) {
+    return {
+      isOptimized: false,
+      reports: [`تعذّر قياس البروتوكول والكوكيز: لا يمكن الوصول إلى ${url} (${probe.error})`],
+      notes: [] as string[],
+    };
+  }
 
   let resourceCount = 0;
   try {
@@ -90,16 +80,12 @@ function runOptimizerAudit(targetPath: string) {
     resourceCount = countResources(targetPath);
   } catch { /* ignore */ }
 
-  const protocol =
-    /http\/2|h2|HTTP\/2/i.test(htmlContent) ? "HTTP/2" : "HTTP/1.1";
-
-  const cookiesSize = /cookie|Set-Cookie/i.test(htmlContent) ? 3 * 1024 : 512;
-
-  const findings = auditPerformance(resourceCount, protocol, cookiesSize);
+  const { issues, notes } = analyzeHttpProfile(resourceCount, probe.protocol, probe.cookiesSizeBytes);
 
   return {
-    isOptimized: findings.length === 0,
-    reports: findings,
+    isOptimized: issues.length === 0,
+    reports: issues,
+    notes: [`Measured: ${probe.protocol} | cookies ${probe.cookiesSizeBytes} B | ${resourceCount} resource file(s)`, ...notes],
   };
 }
 
@@ -167,6 +153,7 @@ export interface AuditOptions {
   latencyUrl?: string | undefined;
   securityUrl?: string | undefined;
   skipEnv?: boolean | undefined;
+  skipNetwork?: boolean | undefined;
   skipMemory?: boolean | undefined;
   skipSecurity?: boolean | undefined;
   skipDeadCode?: boolean | undefined;
@@ -183,39 +170,36 @@ export interface AuditOptions {
   upgrade?: boolean | undefined;
 }
 
+export interface ModuleResult {
+  ok: boolean;
+  errors: string[];
+  /** True when the check did not run. A skipped check is never reported as PASS. */
+  skipped?: boolean | undefined;
+}
+
 export interface AuditResult {
-  env: { ok: boolean; errors: string[] };
-  images: { ok: boolean; errors: string[] };
-  bundle: { ok: boolean; errors: string[] };
-  network: { ok: boolean; errors: string[] };
-  memory: { ok: boolean; errors: string[] };
-  security: { ok: boolean; errors: string[]; score?: number | undefined };
-  deadCode: { ok: boolean; errors: string[] };
-  dependencies: { ok: boolean; errors: string[] };
-  async: { ok: boolean; errors: string[] };
-  config: { ok: boolean; errors: string[] };
-  performance: { ok: boolean; errors: string[] };
-  optimizer: { ok: boolean; errors: string[] };
-  renderBlocking: { ok: boolean; errors: string[] };
+  env: ModuleResult;
+  images: ModuleResult;
+  bundle: ModuleResult;
+  network: ModuleResult;
+  memory: ModuleResult;
+  security: ModuleResult & { score?: number | undefined };
+  deadCode: ModuleResult;
+  dependencies: ModuleResult;
+  async: ModuleResult;
+  config: ModuleResult;
+  performance: ModuleResult;
+  optimizer: ModuleResult;
+  renderBlocking: ModuleResult;
 }
 
 export async function runAudit(options: AuditOptions = {}): Promise<AuditResult> {
   const targetPath = options.targetPath || process.cwd();
-  let latencyUrl = options.latencyUrl || "http://localhost:3000";
+  // The audited URL is exactly what the caller asked for. If it is unreachable the
+  // network check fails — it is never silently swapped for an external site.
+  const latencyUrl = options.latencyUrl || "http://localhost:3000";
   const securityUrl = options.securityUrl || latencyUrl;
   const silent = options.silent || false;
-
-  try {
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const signal = controller ? controller.signal : undefined as any;
-    if (controller) setTimeout(() => controller.abort(), 800);
-    const res = await (globalThis as any).fetch?.(latencyUrl, { method: "HEAD", signal });
-    if (!res || !res.ok) {
-      latencyUrl = "https://jsonplaceholder.typicode.com/comments";
-    }
-  } catch (e) {
-    latencyUrl = "https://jsonplaceholder.typicode.com/comments";
-  }
 
   if (!silent) {
     console.log(`
@@ -242,6 +226,24 @@ ${CYAN}${BOLD}╔═════════════════════
     renderBlocking: { ok: true, errors: [] },
   };
 
+  const skipFlags: [keyof AuditResult, boolean | undefined][] = [
+    ["env", options.skipEnv],
+    ["network", options.skipNetwork],
+    ["memory", options.skipMemory],
+    ["security", options.skipSecurity],
+    ["deadCode", options.skipDeadCode],
+    ["dependencies", options.skipDependencies],
+    ["async", options.skipAsync],
+    ["config", options.skipConfig],
+    ["performance", options.skipPerformance],
+    ["optimizer", options.skipOptimizer || options.skipNetwork],
+    ["renderBlocking", options.skipRenderBlocking],
+  ];
+  for (const [key, skip] of skipFlags) {
+    if (skip) result[key].skipped = true;
+  }
+  if (options.skipSecurity) delete result.security.score;
+
   section("1️⃣  STATIC ASSETS (Images)");
   try {
     const { violations } = runImagePerformanceAudit(targetPath);
@@ -265,32 +267,50 @@ ${CYAN}${BOLD}╔═════════════════════
 
   section("2️⃣  BUNDLE SIZE");
   try {
-    runComprehensiveBundleAudit(targetPath);
-    log("Bundle audit", "pass", "Within 14 KB round-trip budget");
+    const bundle = runComprehensiveBundleAudit(targetPath);
+    const bundleErrors = [
+      ...bundle.violations.map((v) => `${v.filePath} (${v.sizeKB} KB > ${v.limitKB} KB budget)`),
+      ...bundle.projectIssues,
+    ];
+    if (bundleErrors.length > 0) {
+      result.bundle.ok = false;
+      result.bundle.errors = bundleErrors;
+      log("Bundle audit", "fail", `${bundleErrors.length} issue(s) across ${bundle.scannedFiles} file(s)`);
+      for (const e of bundleErrors) {
+        console.log(`    ${RED}•${RESET} ${e}`);
+      }
+    } else if (bundle.skipped) {
+      result.bundle.skipped = true;
+      log("Bundle audit", "warn", "No source files found — nothing was measured");
+    } else {
+      log("Bundle audit", "pass", `${bundle.scannedFiles} file(s) within 14 KB round-trip budget`);
+    }
   } catch (err: any) {
     result.bundle.ok = false;
     result.bundle.errors = [err.message];
     log("Bundle audit", "fail", err.message);
   }
 
-  section("3️⃣  NETWORK LATENCY");
-  try {
-    const net = await performLiveLatencyAudit(latencyUrl);
-    if (!net.isOptimized) {
-      result.network.ok = false;
-      result.network.errors = net.reports;
-      log("Latency check", "fail", `${net.reports.length} issue(s)`);
-      for (const report of net.reports) {
-        console.log(`    ${YELLOW}•${RESET} ${report}`);
+  if (!options.skipNetwork) {
+    section("3️⃣  NETWORK LATENCY");
+    try {
+      const net = await performLiveLatencyAudit(latencyUrl);
+      if (!net.isOptimized) {
+        result.network.ok = false;
+        result.network.errors = net.reports;
+        log("Latency check", "fail", `${net.reports.length} issue(s)`);
+        for (const report of net.reports) {
+          console.log(`    ${YELLOW}•${RESET} ${report}`);
+        }
+        if (net.reachable) console.log(`    ${DIM}Measured: ${net.requestTimeMs}ms | Payload: ${net.payloadSizeKb.toFixed(2)} KB${RESET}`);
+      } else {
+        log("Latency check", "pass", `${net.requestTimeMs}ms / ${net.payloadSizeKb.toFixed(2)} KB`);
       }
-      console.log(`    ${DIM}Measured: ${net.requestTimeMs}ms | Payload: ${net.payloadSizeKb.toFixed(2)} KB${RESET}`);
-    } else {
-      log("Latency check", "pass", `${net.requestTimeMs}ms / ${net.payloadSizeKb.toFixed(2)} KB`);
+    } catch (err: any) {
+      result.network.ok = false;
+      result.network.errors = [err.message || "Network request failed"];
+      log("Latency check", "fail", err.message || "Request failed");
     }
-  } catch (err: any) {
-    result.network.ok = false;
-    result.network.errors = [err.message || "Network request failed"];
-    log("Latency check", "fail", err.message || "Request failed");
   }
 
   if (!options.skipMemory) {
@@ -507,7 +527,7 @@ ${CYAN}${BOLD}╔═════════════════════
   if (!options.skipPerformance) {
     section("1️⃣1️⃣  PERFORMANCE CACHE");
     try {
-      const perf = runPerformanceAudit(targetPath);
+      const perf = runPerformanceAudit();
       if (typeof perf === "object" && perf !== null && "isOptimized" in perf && !perf.isOptimized) {
         result.performance.ok = false;
         result.performance.errors = perf.reports || ["Performance cache issues detected"];
@@ -525,11 +545,11 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  if (!options.skipOptimizer) {
+  if (!options.skipOptimizer && !options.skipNetwork) {
     section("1️⃣2️⃣  HTTP OPTIMIZER");
     try {
-      const opt = runOptimizerAudit(targetPath);
-      if (typeof opt === "object" && opt !== null && "isOptimized" in opt && !opt.isOptimized) {
+      const opt = await runOptimizerAudit(targetPath, latencyUrl);
+      if (!opt.isOptimized) {
         result.optimizer.ok = false;
         result.optimizer.errors = opt.reports || ["HTTP optimizer issues detected"];
         log("Optimizer audit", "warn", `${result.optimizer.errors.length} issue(s)`);
@@ -538,6 +558,9 @@ ${CYAN}${BOLD}╔═════════════════════
         }
       } else {
         log("Optimizer audit", "pass", "HTTP/cookie settings optimal");
+      }
+      for (const note of opt.notes) {
+        console.log(`    ${DIM}${note}${RESET}`);
       }
     } catch (err: any) {
       result.optimizer.ok = false;
@@ -593,33 +616,48 @@ ${CYAN}${BOLD}╔═════════════════════
     result.optimizer.ok &&
     result.renderBlocking.ok;
 
-  const rows: [string, string, number][] = [
-    ["Environment", result.env.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.env.errors.length],
-    ["Images", result.images.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.images.errors.length],
-    ["Bundle", result.bundle.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.bundle.errors.length],
-    ["Network", result.network.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.network.errors.length],
-    ["Memory", result.memory.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.memory.errors.length],
-    ["Security", result.security.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.security.errors.length],
-    ["Dead Code", result.deadCode.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.deadCode.errors.length],
-    ["Dependencies", result.dependencies.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.dependencies.errors.length],
-    ["Async", result.async.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.async.errors.length],
-    ["Config", result.config.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.config.errors.length],
-    ["Performance", result.performance.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.performance.errors.length],
-    ["Optimizer", result.optimizer.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.optimizer.errors.length],
-    ["Render Block", result.renderBlocking.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.renderBlocking.errors.length],
+  const rows: [string, ModuleResult, "FAIL" | "WARN"][] = [
+    ["Environment", result.env, "FAIL"],
+    ["Images", result.images, "FAIL"],
+    ["Bundle", result.bundle, "FAIL"],
+    ["Network", result.network, "FAIL"],
+    ["Memory", result.memory, "WARN"],
+    ["Security", result.security, "FAIL"],
+    ["Dead Code", result.deadCode, "WARN"],
+    ["Dependencies", result.dependencies, "WARN"],
+    ["Async", result.async, "WARN"],
+    ["Config", result.config, "FAIL"],
+    ["Performance", result.performance, "WARN"],
+    ["Optimizer", result.optimizer, "WARN"],
+    ["Render Block", result.renderBlocking, "WARN"],
   ];
 
-  for (const [name, status, count] of rows) {
-    const detail = count > 0 ? `${count} issue(s)` : "clean";
-    const detailColor = count > 0 ? (name === "Security" || name === "Config" || name === "Environment" ? RED : YELLOW) : GREEN;
-    console.log(`  ${name.padEnd(15)} ${status.padEnd(12)} ${detailColor}${detail}${RESET}`);
+  for (const [name, mod, failLabel] of rows) {
+    const failColor = failLabel === "FAIL" ? RED : YELLOW;
+    const status = mod.skipped
+      ? `${DIM}SKIP${RESET}`
+      : mod.ok
+        ? `${GREEN}PASS${RESET}`
+        : `${failColor}${failLabel}${RESET}`;
+    const count = mod.errors.length;
+    const detail = mod.skipped ? `${DIM}not run${RESET}` : count > 0 ? `${failColor}${count} issue(s)${RESET}` : `${GREEN}clean${RESET}`;
+    console.log(`  ${name.padEnd(15)} ${status.padEnd(12)} ${detail}`);
   }
+  const skippedCount = rows.filter(([, mod]) => mod.skipped).length;
 
   console.log("");
   if (allOk) {
-    box([`${GREEN}${BOLD}✅ All checks passed!${RESET}`, `${DIM}Your project is clean and optimized.${RESET}`]);
+    box(
+      skippedCount > 0
+        ? [`${GREEN}${BOLD}✅ All executed checks passed.${RESET}`, `${YELLOW}${skippedCount} check(s) were skipped and are not verified.${RESET}`]
+        : [`${GREEN}${BOLD}✅ All checks passed!${RESET}`, `${DIM}Your project is clean and optimized.${RESET}`]
+    );
   } else {
-    const criticalCount = result.env.errors.length + result.security.errors.length + result.config.errors.length;
+    const criticalCount =
+      result.images.errors.length +
+      result.bundle.errors.length +
+      result.network.errors.length +
+      result.env.errors.length + result.security.errors.length + result.config.errors.length;
     const warningCount =
       result.memory.errors.length +
       result.deadCode.errors.length +
@@ -699,6 +737,7 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
   const args = process.argv.slice(2);
   const opts: AuditOptions = {
     skipEnv: args.includes("--skip-env"),
+    skipNetwork: args.includes("--skip-network"),
     skipMemory: args.includes("--skip-memory"),
     skipSecurity: args.includes("--skip-security"),
     skipDeadCode: args.includes("--skip-dead-code"),

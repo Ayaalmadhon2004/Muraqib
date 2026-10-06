@@ -5,13 +5,15 @@ export interface LatencyAuditResult {
   reports: string[];
   requestTimeMs: number;
   payloadSizeKb: number;
+  /** False when the target could not be reached — no measurement was taken. */
+  reachable: boolean;
 }
 
 export const performLiveLatencyAudit = async (url: string): Promise<LatencyAuditResult> => {
     const startTime = Date.now(); 
 
     try {
-        const response = await axios.get(url); 
+        const response = await axios.get(url, { timeout: 10000 });
         const endTime = Date.now();
         const requestTimeMs = endTime - startTime; 
         const contentLength = response.headers['content-length'] as string | undefined;
@@ -33,16 +35,20 @@ export const performLiveLatencyAudit = async (url: string): Promise<LatencyAudit
         return {
             ...auditResult,
             requestTimeMs,
-            payloadSizeKb
+            payloadSizeKb,
+            reachable: true
         };
 
     } catch (error) {
-        console.error(`❌ [Muraqib Audit Error]: Failed to fetch or measure the URL: ${url}`);
-        return { 
-            isOptimized: false, 
-            reports: ["خطأ في الاتصال بالشبكة أو الرابط غير صالح."],
+        // No fallback target: an unreachable URL is a failed check, never a pass.
+        const reason = error instanceof Error ? error.message : String(error);
+        console.error(`❌ [Muraqib Audit Error]: Failed to fetch or measure the URL: ${url} (${reason})`);
+        return {
+            isOptimized: false,
+            reports: [`تعذّر الوصول إلى ${url}: ${reason}`],
             requestTimeMs: 0,
-            payloadSizeKb: 0
+            payloadSizeKb: 0,
+            reachable: false
         };
     }
 };

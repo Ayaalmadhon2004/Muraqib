@@ -317,18 +317,14 @@ export function createEnv<
     throw error;
   }
 
-  try {
-// muraqib-unreachable: flagged by automated triage. Review before removal.
-    const validatedGuard = createGuard(combinedSchema, {
-      runtimeEnv: processedEnv,
-      isServer: opts.isServer ?? typeof window === "undefined",
-      emptyStringAsUndefined: shouldSanitize,
-    });
+  // muraqib-unreachable: flagged by automated triage. Review before removal.
+  const validatedGuard = createGuard(combinedSchema, {
+    runtimeEnv: processedEnv,
+    isServer: opts.isServer ?? typeof window === "undefined",
+    emptyStringAsUndefined: shouldSanitize,
+  });
 
-    return (validatedGuard?.data ?? validatedGuard) as any;
-  } catch (validationError: any) {
-    throw validationError;
-  }
+  return (validatedGuard?.data ?? validatedGuard) as any;
 }
 
 // =========================================================================
