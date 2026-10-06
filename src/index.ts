@@ -14,27 +14,15 @@ import { performAsyncAudit } from "./core/async-guard.js";
 import { performConfigAudit } from "./core/config-guard.js";
 
 import { runPerformanceAudit } from "./core/performance/auditor.js";
+import { analyzeHttpProfile } from "./core/performance/optimizer-engine.js";
+import { probeHttp } from "./core/performance/http-probe.js";
 import { runMuraqibUpgradeOrchestrator } from "./core/orchestrator.js";
 
 export { createEnv, createEnvWithPresets, loadEnv, safeCreateEnv } from "./env.js";
 export * from "./core/types.js";
 export * from "./core/standard.js";
 
-export const auditPerformance = (_resourceCount: number, protocol: string, cookiesSize: number) => {
-  const findings: string[] = [];
-
-  if (cookiesSize > 2 * 1024) { 
-    findings.push("تحذير: حجم الكوكيز يتجاوز 2KB. كل طلب سيتم تحميله ببيانات غير ضرورية.");
-  }
-
-  if (protocol === 'HTTP/2') {
-    findings.push("ملاحظة: أنتِ تستخدمين HTTP/2. تأكدي من إزالة الـ Domain Sharding والـ Bundle-ing غير الضروري.");
-  } else {
-    findings.push("تنبيه: أنتِ على بروتوكول قديم (HTTP/1.x). قد تحتاجين لدمج الملفات (Concatenation) للالتفاف على القيود.");
-  }
-
-  return findings;
-};
+export { auditPerformance, analyzeHttpProfile } from "./core/performance/optimizer-engine.js";
 
 export const analyzeRenderBlocking = (htmlContent: string) => {
   const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
@@ -59,14 +47,16 @@ export const analyzeRenderBlocking = (htmlContent: string) => {
   };
 };
 
-function runOptimizerAudit(targetPath: string) {
-  let htmlContent = "";
-  try {
-    const htmlPath = path.join(targetPath, "index.html");
-    if (fs.existsSync(htmlPath)) {
-      htmlContent = fs.readFileSync(htmlPath, "utf-8");
-    }
-  } catch { /* ignore missing HTML */ }
+async function runOptimizerAudit(targetPath: string, url: string) {
+  // Protocol and cookie weight are measured from the live server, never inferred.
+  const probe = await probeHttp(url);
+  if (!probe.reachable) {
+    return {
+      isOptimized: false,
+      reports: [`تعذّر قياس البروتوكول والكوكيز: لا يمكن الوصول إلى ${url} (${probe.error})`],
+      notes: [] as string[],
+    };
+  }
 
   let resourceCount = 0;
   try {
@@ -90,16 +80,12 @@ function runOptimizerAudit(targetPath: string) {
     resourceCount = countResources(targetPath);
   } catch { /* ignore */ }
 
-  const protocol =
-    /http\/2|h2|HTTP\/2/i.test(htmlContent) ? "HTTP/2" : "HTTP/1.1";
-
-  const cookiesSize = /cookie|Set-Cookie/i.test(htmlContent) ? 3 * 1024 : 512;
-
-  const findings = auditPerformance(resourceCount, protocol, cookiesSize);
+  const { issues, notes } = analyzeHttpProfile(resourceCount, probe.protocol, probe.cookiesSizeBytes);
 
   return {
-    isOptimized: findings.length === 0,
-    reports: findings,
+    isOptimized: issues.length === 0,
+    reports: issues,
+    notes: [`Measured: ${probe.protocol} | cookies ${probe.cookiesSizeBytes} B | ${resourceCount} resource file(s)`, ...notes],
   };
 }
 
@@ -250,7 +236,7 @@ ${CYAN}${BOLD}╔═════════════════════
     ["async", options.skipAsync],
     ["config", options.skipConfig],
     ["performance", options.skipPerformance],
-    ["optimizer", options.skipOptimizer],
+    ["optimizer", options.skipOptimizer || options.skipNetwork],
     ["renderBlocking", options.skipRenderBlocking],
   ];
   for (const [key, skip] of skipFlags) {
@@ -541,7 +527,7 @@ ${CYAN}${BOLD}╔═════════════════════
   if (!options.skipPerformance) {
     section("1️⃣1️⃣  PERFORMANCE CACHE");
     try {
-      const perf = runPerformanceAudit(targetPath);
+      const perf = runPerformanceAudit();
       if (typeof perf === "object" && perf !== null && "isOptimized" in perf && !perf.isOptimized) {
         result.performance.ok = false;
         result.performance.errors = perf.reports || ["Performance cache issues detected"];
@@ -559,11 +545,11 @@ ${CYAN}${BOLD}╔═════════════════════
     }
   }
 
-  if (!options.skipOptimizer) {
+  if (!options.skipOptimizer && !options.skipNetwork) {
     section("1️⃣2️⃣  HTTP OPTIMIZER");
     try {
-      const opt = runOptimizerAudit(targetPath);
-      if (typeof opt === "object" && opt !== null && "isOptimized" in opt && !opt.isOptimized) {
+      const opt = await runOptimizerAudit(targetPath, latencyUrl);
+      if (!opt.isOptimized) {
         result.optimizer.ok = false;
         result.optimizer.errors = opt.reports || ["HTTP optimizer issues detected"];
         log("Optimizer audit", "warn", `${result.optimizer.errors.length} issue(s)`);
@@ -572,6 +558,9 @@ ${CYAN}${BOLD}╔═════════════════════
         }
       } else {
         log("Optimizer audit", "pass", "HTTP/cookie settings optimal");
+      }
+      for (const note of opt.notes) {
+        console.log(`    ${DIM}${note}${RESET}`);
       }
     } catch (err: any) {
       result.optimizer.ok = false;

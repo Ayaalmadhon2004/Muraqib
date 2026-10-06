@@ -184,7 +184,7 @@ function errorMessage(error: unknown): string {
 // JSON with comments / trailing commas (tsconfig.json)
 // ---------------------------------------------------------------------------
 function stripJsonCommentsAndTrailingCommas(input: string): string {
-  const text = input.replace(/^﻿/, "");
+  const text = input.replace(/^\uFEFF/, "");
 
   // Pass 1: remove comments (string-aware).
   let noComments = "";
