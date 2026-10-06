@@ -38,6 +38,7 @@ export interface AuditOptions {
   presets?: string[] | undefined;
   safe?: boolean | undefined;
   upgrade?: boolean | undefined;
+  exitProcess?: boolean | undefined;
 }
 
 export interface ModuleResult {

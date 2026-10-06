@@ -2,6 +2,7 @@ import { loadEnv } from "../env.js";
 import { getArg } from "../shared/utils.js";
 import { CLI_FLAGS } from "../shared/constants.js";
 import { runAuditWorkflow } from "./workflow.js";
+import { type AuditOptions } from "../orchestrator/audit.js";
 
 export function parseCliArgs(args: string[]) {
   return {
@@ -30,6 +31,9 @@ export function parseCliArgs(args: string[]) {
 export async function run() {
   loadEnv({ verbose: false });
   const args = process.argv.slice(2);
-  const opts = parseCliArgs(args);
+  const opts: AuditOptions = {
+    ...parseCliArgs(args),
+    exitProcess: true,
+  };
   return runAuditWorkflow(opts);
 }

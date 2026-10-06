@@ -346,7 +346,12 @@ export async function runAuditWorkflow(options: AuditOptions = {}): Promise<Audi
     !result.async.ok ||
     !result.config.ok ||
     !result.renderBlocking.ok;
-  process.exit(failed ? 1 : 0);
+
+  // Note: Only exit if called from CLI directly (when run() is invoked)
+  // When used as an API, this should just return results
+  if (options.exitProcess) {
+    process.exit(failed ? 1 : 0);
+  }
 
   return result;
 }
