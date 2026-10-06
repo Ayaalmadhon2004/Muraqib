@@ -16,8 +16,8 @@ if (process.env.ENABLE_SERVER_COMPRESSION === "true") {
   app.use(compression());
 }
 
-applySecurityMiddleware(app as any);
-app.use(performanceMonitor as any);
+applySecurityMiddleware(app as Parameters<typeof applySecurityMiddleware>[0]);
+app.use(performanceMonitor as Parameters<typeof app.use>[0]);
 
 const publicDir = path.join(process.cwd(), "public");
 const cacheSeconds = Number(process.env.STATIC_ASSETS_CACHE_MAX_AGE) || 86400;

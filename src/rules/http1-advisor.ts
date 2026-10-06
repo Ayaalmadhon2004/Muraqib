@@ -1,4 +1,4 @@
-export const analyzeHTTP1Compliance = (_res: any, headers: Record<string, string>) => {
+export const analyzeHTTP1Compliance = (_res: unknown, headers: Record<string, string>) => {
   const warnings: string[] = [];
 
   if (!headers['content-encoding'] || !headers['content-encoding'].includes('gzip')) {

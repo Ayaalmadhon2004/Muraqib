@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { createEnv } from "../index.js"; 
+import { createEnv } from "../index.js";
 
 // استيراد الـ Interfaces مع تلبية شروط verbatimModuleSyntax الصارمة
 import type { VercelEnv, NeonVercelEnv } from "../presets.js";
@@ -9,7 +9,7 @@ import type { VercelEnv, NeonVercelEnv } from "../presets.js";
  * فحص وتدقيق المتغيرات التي تحقنها منصة Vercel تلقائياً
  */
 export const vercel = (): Readonly<VercelEnv> => { // muraqib-ignore-dead: auto-suppressed by script for vercel
-  // 1️⃣ نقوم ببناء سكيمة التحقق الصافية من Zod وتمرير البيئة لها مباشرة
+  // Build a Zod schema and pass its shape directly to createEnv — no intermediate parse needed.
   const vercelSchema = z.object({
     VERCEL: z.string().optional(),
     CI: z.string().optional(),
@@ -17,15 +17,8 @@ export const vercel = (): Readonly<VercelEnv> => { // muraqib-ignore-dead: auto-
     VERCEL_URL: z.string().optional(),
   });
 
-  // 2️⃣ استخراج البيانات المفحوصة بأمان
-  const parsed = vercelSchema.safeParse(process.env);
-  const validatedEnv = parsed.success ? parsed.data : {};
-
-  // 3️⃣ تمرير البيانات النظيفة إلى دالة createEnv الداخلية لتسجيلها في السيستم دون تعارض أنواع
-  const env = createEnv({
-    server: validatedEnv as any,
-    runtimeEnv: process.env,
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const env = createEnv({ server: vercelSchema.shape as any, runtimeEnv: process.env });
 
   return (env ?? {}) as Readonly<VercelEnv>;
 };
@@ -36,17 +29,12 @@ export const vercel = (): Readonly<VercelEnv> => { // muraqib-ignore-dead: auto-
  */
 export const neonVercel = (): Readonly<NeonVercelEnv> => { // muraqib-ignore-dead: auto-suppressed by script for neonVercel
   const neonSchema = z.object({
-    DATABASE_URL: z.string().url(), 
+    DATABASE_URL: z.string().url(),
     DATABASE_URL_UNPOOLED: z.string().optional(),
   });
 
-  const parsed = neonSchema.safeParse(process.env);
-  const validatedEnv = parsed.success ? parsed.data : {};
-
-  const env = createEnv({
-    server: validatedEnv as any,
-    runtimeEnv: process.env,
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const env = createEnv({ server: neonSchema.shape as any, runtimeEnv: process.env });
 
   return (env ?? {}) as Readonly<NeonVercelEnv>;
 };

@@ -45,7 +45,7 @@ export function performDependencyAudit(targetPath: string): DependencyAuditResul
   const graph: Map<string, Set<string>> = new Map();
 
   for (const scannedFile of scannedFiles) {
-    const { relativePath, content, path: fullPath } = scannedFile as any;
+    const { relativePath, content, path: fullPath } = scannedFile as { relativePath: string; content: string; path: string };
     const isGenerated = /(?:\.d\.ts|generated|dist|build|coverage|node_modules)/i.test(relativePath);
     if (isGenerated) {
       continue;

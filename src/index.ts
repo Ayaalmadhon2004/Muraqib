@@ -128,6 +128,11 @@ const CYAN = "\x1b[36m";
 const DIM = "\x1b[2m";
 const BOLD = "\x1b[1m";
 
+/** Safely extract a string message from an unknown caught value. */
+function toMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 function log(title: string, status: "pass" | "fail" | "warn", message?: string) {
   const icon = status === "pass" ? `${GREEN}[PASS]${RESET}` : status === "fail" ? `${RED}[FAIL]${RESET}` : `${YELLOW}[WARN]${RESET}`;
   console.log(`  ${icon} ${title}${message ? `: ${message}` : ""}`);
@@ -259,10 +264,10 @@ ${CYAN}${BOLD}╔═════════════════════
     } else {
       log("Image audit", "pass", "All images within 500 KB limit");
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     result.images.ok = false;
-    result.images.errors = [err.message];
-    log("Image audit", "fail", err.message);
+    result.images.errors = [toMessage(err)];
+    log("Image audit", "fail", toMessage(err));
   }
 
   section("2️⃣  BUNDLE SIZE");
@@ -285,10 +290,10 @@ ${CYAN}${BOLD}╔═════════════════════
     } else {
       log("Bundle audit", "pass", `${bundle.scannedFiles} file(s) within 14 KB round-trip budget`);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     result.bundle.ok = false;
-    result.bundle.errors = [err.message];
-    log("Bundle audit", "fail", err.message);
+    result.bundle.errors = [toMessage(err)];
+    log("Bundle audit", "fail", toMessage(err));
   }
 
   if (!options.skipNetwork) {
@@ -306,10 +311,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Latency check", "pass", `${net.requestTimeMs}ms / ${net.payloadSizeKb.toFixed(2)} KB`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.network.ok = false;
-      result.network.errors = [err.message || "Network request failed"];
-      log("Latency check", "fail", err.message || "Request failed");
+      result.network.errors = [toMessage(err) || "Network request failed"];
+      log("Latency check", "fail", toMessage(err) || "Request failed");
     }
   }
 
@@ -328,10 +333,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Memory audit", "pass", `Heap: ${mem.heapUsedMb} MB | RSS: ${mem.rssMb} MB`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.memory.ok = false;
-      result.memory.errors = [err.message];
-      log("Memory audit", "fail", err.message);
+      result.memory.errors = [toMessage(err)];
+      log("Memory audit", "fail", toMessage(err));
     }
   }
 
@@ -350,10 +355,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Security audit", "pass", `Score: ${sec.score}/100`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.security.ok = false;
-      result.security.errors = [err.message];
-      log("Security audit", "fail", err.message);
+      result.security.errors = [toMessage(err)];
+      log("Security audit", "fail", toMessage(err));
     }
   }
 
@@ -377,10 +382,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Dead code audit", "pass", "No dead code detected");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.deadCode.ok = false;
-      result.deadCode.errors = [err.message];
-      log("Dead code audit", "fail", err.message);
+      result.deadCode.errors = [toMessage(err)];
+      log("Dead code audit", "fail", toMessage(err));
     }
   }
 
@@ -407,10 +412,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Dependency audit", "pass", "No issues found");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.dependencies.ok = false;
-      result.dependencies.errors = [err.message];
-      log("Dependency audit", "fail", err.message);
+      result.dependencies.errors = [toMessage(err)];
+      log("Dependency audit", "fail", toMessage(err));
     }
   }
 
@@ -434,10 +439,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Async audit", "pass", "No async issues detected");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.async.ok = false;
-      result.async.errors = [err.message];
-      log("Async audit", "fail", err.message);
+      result.async.errors = [toMessage(err)];
+      log("Async audit", "fail", toMessage(err));
     }
   }
 
@@ -466,10 +471,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Config audit", "pass", "All configurations valid");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.config.ok = false;
-      result.config.errors = [err.message];
-      log("Config audit", "fail", err.message);
+      result.config.errors = [toMessage(err)];
+      log("Config audit", "fail", toMessage(err));
     }
   }
 
@@ -486,22 +491,22 @@ ${CYAN}${BOLD}╔═════════════════════
         ...cachePerformanceSchema,
       };
 
-      const envOptions: any = {
-        server: schema,
-        runtimeEnv: process.env,
+      const envOptions: import("./env.js").CreateEnvOptions = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        server: schema as any,
+        runtimeEnv: process.env as Record<string, string | undefined>,
         isServer: true,
         silent: true,
+        ...(options.presets ? { presets: options.presets as import("./presets.js").PresetInput[] } : {}),
+        ...(options.schedule ? { schedule: options.schedule } : {}),
       };
-      
-      if (options.presets) envOptions.presets = options.presets;
-      if (options.schedule) envOptions.schedule = options.schedule;
 
       if (options.safe) {
         const envResult = safeCreateEnv(envOptions);
 
         if (!envResult.success) {
           result.env.ok = false;
-          result.env.errors = envResult.error.map((e: any) => `${e.path}: ${e.message}`);
+          result.env.errors = envResult.error.map((e) => `${e.path}: ${e.message}`);
           log("Env validation", "fail", `${envResult.error.length} violation(s)`);
           for (const err of envResult.error) {
             console.log(`    ${RED}•${RESET} ${err.path}: ${err.message}`);
@@ -510,10 +515,11 @@ ${CYAN}${BOLD}╔═════════════════════
           log("Env validation", "pass", "All variables valid");
         }
       } else {
-        createEnvWithPresets(schema, envOptions);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        createEnvWithPresets(schema, envOptions as any);
         log("Env validation", "pass", "All variables valid");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.env.ok = false;
       const errors = extractEnvErrors(err);
       result.env.errors = errors;
@@ -538,10 +544,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Performance audit", "pass", "Cache performance optimal");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.performance.ok = false;
-      result.performance.errors = [err.message];
-      log("Performance audit", "fail", err.message);
+      result.performance.errors = [toMessage(err)];
+      log("Performance audit", "fail", toMessage(err));
     }
   }
 
@@ -562,10 +568,10 @@ ${CYAN}${BOLD}╔═════════════════════
       for (const note of opt.notes) {
         console.log(`    ${DIM}${note}${RESET}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.optimizer.ok = false;
-      result.optimizer.errors = [err.message];
-      log("Optimizer audit", "fail", err.message);
+      result.optimizer.errors = [toMessage(err)];
+      log("Optimizer audit", "fail", toMessage(err));
     }
   }
 
@@ -583,10 +589,10 @@ ${CYAN}${BOLD}╔═════════════════════
       } else {
         log("Render blocking audit", "pass", "No render blocking scripts");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.renderBlocking.ok = false;
-      result.renderBlocking.errors = [err.message];
-      log("Render blocking audit", "fail", err.message);
+      result.renderBlocking.errors = [toMessage(err)];
+      log("Render blocking audit", "fail", toMessage(err));
     }
   }
 
@@ -595,8 +601,8 @@ ${CYAN}${BOLD}╔═════════════════════
     try {
       await runUpgradePackages(targetPath);
       log("Package upgrade", "pass", "Packages upgraded with rollback support");
-    } catch (err: any) {
-      log("Package upgrade", "fail", err.message);
+    } catch (err: unknown) {
+      log("Package upgrade", "fail", toMessage(err));
     }
   }
 
@@ -710,23 +716,44 @@ async function runUpgradePackages(targetPath: string) {
   }
 }
 
-function extractEnvErrors(error: any): string[] {
-  if (error?.isMuraqibCustom && Array.isArray(error.errors)) {
-    return error.errors.map((e: any) => `${e.path || e.field || "unknown"}: ${e.message || "invalid"}`);
+type MuraqibIssue = { path?: unknown; field?: unknown; message?: string };
+
+function extractEnvErrors(error: unknown): string[] {
+  if (
+    error !== null &&
+    typeof error === "object" &&
+    "isMuraqibCustom" in error &&
+    (error as { isMuraqibCustom: boolean }).isMuraqibCustom &&
+    "errors" in error &&
+    Array.isArray((error as { errors: MuraqibIssue[] }).errors)
+  ) {
+    return (error as { errors: MuraqibIssue[] }).errors.map(
+      (e) => `${String(e.path ?? e.field ?? "unknown")}: ${e.message ?? "invalid"}`
+    );
   }
-  if (error?.issues && Array.isArray(error.issues)) {
-    return error.issues.map((e: any) => {
-      const path = Array.isArray(e.path) ? e.path.join(".") : String(e.path || "unknown");
-      return `${path}: ${e.message}`;
+  if (
+    error !== null &&
+    typeof error === "object" &&
+    "issues" in error &&
+    Array.isArray((error as { issues: MuraqibIssue[] }).issues)
+  ) {
+    return (error as { issues: MuraqibIssue[] }).issues.map((e) => {
+      const p = Array.isArray(e.path) ? (e.path as unknown[]).join(".") : String(e.path ?? "unknown");
+      return `${p}: ${e.message ?? "invalid"}`;
     });
   }
-  if (error?.errors && Array.isArray(error.errors)) {
-    return error.errors.map((e: any) => {
-      const path = Array.isArray(e.path) ? e.path.join(".") : (e.path || e.field || "unknown");
-      return `${path}: ${e.message || "invalid"}`;
+  if (
+    error !== null &&
+    typeof error === "object" &&
+    "errors" in error &&
+    Array.isArray((error as { errors: MuraqibIssue[] }).errors)
+  ) {
+    return (error as { errors: MuraqibIssue[] }).errors.map((e) => {
+      const p = Array.isArray(e.path) ? (e.path as unknown[]).join(".") : String(e.path ?? e.field ?? "unknown");
+      return `${p}: ${e.message ?? "invalid"}`;
     });
   }
-  return [error?.message || String(error)];
+  return [toMessage(error)];
 }
 
 const isMain = import.meta.url.endsWith(process.argv[1]?.replace(/\\/g, "/") ?? "");
@@ -782,7 +809,7 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
         !res.config.ok ||
         !res.renderBlocking.ok;
       process.exit(failed ? 1 : 0);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       process.exit(1);
     }

@@ -35,7 +35,7 @@ export interface RailwayEnv { // muraqib-ignore-dead: auto-suppressed by script 
 
 export type PresetInput = "vercel" | "neonVercel" | "supabaseVercel" | "railway" | "next"; 
 
-export const presetsMap: Record<PresetInput, Record<string, any>> = {
+export const presetsMap: Record<PresetInput, Record<string, z.ZodTypeAny>> = {
   vercel: {
     VERCEL: z.string().optional(),
     VERCEL_ENV: z.enum(["development", "preview", "production"]).optional(),
