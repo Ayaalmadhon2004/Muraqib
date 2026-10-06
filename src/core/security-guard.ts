@@ -73,11 +73,24 @@ export async function performSecurityAudit(targetUrl: string): Promise<SecurityA
         // Check CSP
         if (headers["content-security-policy"]) {
           const csp = String(headers["content-security-policy"]);
-          if (csp.includes("'unsafe-inline'") || csp.includes("'unsafe-eval'")) {
-            reports.push(`CSP contains unsafe directives: ${csp.match(/'unsafe-[^']+'/)?.[0]}`);
+
+          const unsafeMatches = csp.match(/'unsafe-[^']+'/g) || [];
+          if (unsafeMatches.length > 0) {
+            reports.push(`CSP contains unsafe directives: ${unsafeMatches.join(', ')}`);
           }
+
           if (!csp.includes("default-src") && !csp.includes("script-src")) {
             reports.push("CSP missing default-src or script-src directive");
+          }
+
+          const criticalDirectives = ["font-src", "img-src", "style-src", "connect-src", "frame-ancestors"];
+          const missingDirectives = criticalDirectives.filter(dir => !csp.includes(dir));
+          if (missingDirectives.length > 0) {
+            reports.push(`CSP missing recommended directives: ${missingDirectives.join(', ')}`);
+          }
+
+          if (csp.includes("script-src") && csp.includes("script-src 'none'")) {
+            reports.push("CSP script-src is set to 'none', blocking all scripts");
           }
         }
 

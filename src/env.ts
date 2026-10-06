@@ -156,10 +156,22 @@ function findCommentIndex(str: string): number {
   return -1;
 }
 
+function isSensitiveVariable(name: string): boolean {
+  const sensitivePatterns = [
+    'PASSWORD', 'SECRET', 'TOKEN', 'KEY', 'CREDENTIAL',
+    'DATABASE_URL', 'API_KEY', 'AUTH', 'PRIVATE', 'APIKEY'
+  ];
+  return sensitivePatterns.some(pattern => name.toUpperCase().includes(pattern));
+}
+
 /** يفكّ $VAR و ${VAR} و ${VAR:-default} */
 function expandVariables(value: string, env: Record<string, string | undefined>): string {
   return value.replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}?/g, (_, name, def) => {
-    return env[name] ?? def ?? "";
+    const expanded = env[name];
+    if (expanded && isSensitiveVariable(name)) {
+      console.warn(`⚠️  [Muraqib Security]: Sensitive environment variable "${name}" was expanded in configuration. Ensure this value is not exposed.`);
+    }
+    return expanded ?? def ?? "";
   }); // muraqib-ignore-dead: auto-suppressed by script for InferSchema
 }
 

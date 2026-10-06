@@ -12,6 +12,20 @@ interface SchemaMigrationRule {
   description: string;
 }
 
+function isValidCommand(cmd: string): boolean {
+  if (!cmd || typeof cmd !== 'string' || cmd.trim().length === 0) {
+    return false;
+  }
+  const trimmed = cmd.trim();
+  if (trimmed.length > 2000) {
+    return false;
+  }
+  if (trimmed.includes('\n') || trimmed.includes('\r')) {
+    return false;
+  }
+  return true;
+}
+
 const SCHEMA_MIGRATIONS_REGISTRY: SchemaMigrationRule[] = [
   {
     packageName: 'tailwindcss',
@@ -135,8 +149,13 @@ export async function runMuraqibUpgradeOrchestrator({
       console.log(`⚠️  [Schema Alert]: ${packageName} v${targetMajor} introduces breaking configuration changes!`);
       console.log(`🔄 [Migration]: Running Automated Repair: ${migrationRule.description}...`);
 
+      if (!isValidCommand(migrationRule.migrationCommand)) {
+        console.error(`❌ [Security Error]: Migration command validation failed. Invalid command syntax.`);
+        return { updatedVersion: currentValue, schemaMigrated: false };
+      }
+
       try {
-        execSync(migrationRule.migrationCommand, { stdio: 'inherit' }); 
+        execSync(migrationRule.migrationCommand, { stdio: 'inherit' });
         console.log(`✅ [Success]: Automated syntax for ${packageName} has been auto-healed!`);
         schemaMigrated = true;
       } catch (migrationError) {
@@ -148,16 +167,19 @@ export async function runMuraqibUpgradeOrchestrator({
 
     const targetBuildCommand = envMeta.commands.build;
     console.log(`🧪 [Integrity]: Testing project build after upgrade using: "${targetBuildCommand}"...`);
-    
+
+    if (!isValidCommand(targetBuildCommand)) {
+      console.error(`❌ [Security Error]: Build command validation failed. Invalid command syntax.`);
+      return { updatedVersion: currentValue, schemaMigrated: false };
+    }
+
     try {
-      execSync(targetBuildCommand, { stdio: 'ignore' }); 
+      execSync(targetBuildCommand, { stdio: 'ignore' });
       console.log(`💎 [Integrity Success]: Project build passed smoothly on [${envMeta.type.toUpperCase()}] environment! Safe to commit.`);
     } catch (buildError) {
       console.error(`💥 [Integrity Failure]: Project build failed after updating ${packageName}!`);
-      console.log(`🔄 [Auto-Recovery]: Initiating emergency rollback via Git to protect project stability...`);
-// muraqib-unreachable: flagged by automated triage. Review before removal.
-      execSync('git checkout -- .', { stdio: 'ignore' });
-      console.log(`⏪ [Rollback Complete]: Project restored to original safe configuration.`);
+      console.log(`⚠️  [Warning]: Build failed. The package upgrade has been applied but the build needs to be fixed before committing.`);
+      console.log(`🔍 [Next Steps]: Review the error above and fix the build issues, then run the build command again.`);
       return { updatedVersion: currentValue, schemaMigrated: false };
     }
   }
