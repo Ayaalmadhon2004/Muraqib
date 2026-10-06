@@ -244,23 +244,15 @@ ${CYAN}${BOLD}╔═════════════════════
 
   section("1️⃣  STATIC ASSETS (Images)");
   try {
-    const originalWarn = console.warn;
-    const warnings: string[] = [];
-    console.warn = (...args: any[]) => warnings.push(args.join(" "));
-
-    runImagePerformanceAudit(targetPath);
-    console.warn = originalWarn;
-
-    const issues = warnings.filter((w) => w.includes("unoptimized") || w.includes("Exceeds") || w.includes("heavy"));
-    if (issues.length > 0) {
+    const { violations } = runImagePerformanceAudit(targetPath);
+    if (violations.length > 0) {
       result.images.ok = false;
-      result.images.errors = issues;
-      log("Image audit", "fail", `${issues.length} oversized image(s)`);
-      for (const issue of issues) {
-        const match = issue.match(/File:\s*(.+?)\s*\(([\d]+)\s*KB\)/);
-        if (match) {
-          console.log(`    ${RED}•${RESET} ${match[1]} (${match[2]} KB > 500 KB limit)`);
-        }
+      result.images.errors = violations.map(
+        (v) => `${v.filePath} (${v.sizeKB} KB > 500 KB limit)`
+      );
+      log("Image audit", "fail", `${violations.length} oversized image(s)`);
+      for (const v of violations) {
+        console.log(`    ${RED}•${RESET} ${v.filePath} (${v.sizeKB} KB > 500 KB limit)`);
       }
     } else {
       log("Image audit", "pass", "All images within 500 KB limit");
