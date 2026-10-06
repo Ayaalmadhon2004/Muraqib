@@ -1,17 +1,38 @@
 ﻿node_modules/
 dist/
 .DS_Store
+
+# Environment files - exclude all variants except example
 .env
-.env.*
+.env.local
+.env.*.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
 !.env.example
-/.env.local
+!.env.*.example
+
+# IDE and editor files
 /.idea/
 .vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+
+# Build and dist
 coverage/
 **/*.js
 **/*.d.ts
 **/*.d.ts.map
 **/*.js.map
+
+# Reports
 audit-report.json
 dead-code-report-*.json
 muraqib-collect-report-*.json
