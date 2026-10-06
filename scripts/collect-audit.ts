@@ -16,7 +16,9 @@ let auditError: string | null = null;
 try {
   result = await runAudit({
     targetPath: process.cwd(),
-    // No latencyUrl / securityUrl — CI has no live server to probe.
+    // CI has no live server to probe, so the network checks are skipped
+    // explicitly instead of being pointed at some other host.
+    skipNetwork: true,
     skipSecurity: true,
     skipMemory: true,
     skipPerformance: true,
@@ -24,21 +26,22 @@ try {
   });
 } catch (error) {
   auditError = String(error);
-  // Return a neutral result so the artifact is still uploaded
+  // The audit did not run, so no module may be reported as passing.
+  const notRun = () => ({ ok: false, errors: [`Audit did not run: ${auditError}`] });
   result = {
-    env:           { ok: true,  errors: [auditError] },
-    images:        { ok: true,  errors: [] },
-    bundle:        { ok: true,  errors: [] },
-    network:       { ok: true,  errors: [] },
-    memory:        { ok: true,  errors: [] },
-    security:      { ok: true,  errors: [], score: 100 },
-    deadCode:      { ok: true,  errors: [] },
-    dependencies:  { ok: true,  errors: [] },
-    async:         { ok: true,  errors: [] },
-    config:        { ok: true,  errors: [] },
-    performance:   { ok: true,  errors: [] },
-    optimizer:     { ok: true,  errors: [] },
-    renderBlocking:{ ok: true,  errors: [] },
+    env: notRun(),
+    images: notRun(),
+    bundle: notRun(),
+    network: notRun(),
+    memory: notRun(),
+    security: { ...notRun(), score: 0 },
+    deadCode: notRun(),
+    dependencies: notRun(),
+    async: notRun(),
+    config: notRun(),
+    performance: notRun(),
+    optimizer: notRun(),
+    renderBlocking: notRun(),
   };
 }
 

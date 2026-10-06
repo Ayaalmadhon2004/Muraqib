@@ -167,6 +167,7 @@ export interface AuditOptions {
   latencyUrl?: string | undefined;
   securityUrl?: string | undefined;
   skipEnv?: boolean | undefined;
+  skipNetwork?: boolean | undefined;
   skipMemory?: boolean | undefined;
   skipSecurity?: boolean | undefined;
   skipDeadCode?: boolean | undefined;
@@ -183,39 +184,36 @@ export interface AuditOptions {
   upgrade?: boolean | undefined;
 }
 
+export interface ModuleResult {
+  ok: boolean;
+  errors: string[];
+  /** True when the check did not run. A skipped check is never reported as PASS. */
+  skipped?: boolean | undefined;
+}
+
 export interface AuditResult {
-  env: { ok: boolean; errors: string[] };
-  images: { ok: boolean; errors: string[] };
-  bundle: { ok: boolean; errors: string[] };
-  network: { ok: boolean; errors: string[] };
-  memory: { ok: boolean; errors: string[] };
-  security: { ok: boolean; errors: string[]; score?: number | undefined };
-  deadCode: { ok: boolean; errors: string[] };
-  dependencies: { ok: boolean; errors: string[] };
-  async: { ok: boolean; errors: string[] };
-  config: { ok: boolean; errors: string[] };
-  performance: { ok: boolean; errors: string[] };
-  optimizer: { ok: boolean; errors: string[] };
-  renderBlocking: { ok: boolean; errors: string[] };
+  env: ModuleResult;
+  images: ModuleResult;
+  bundle: ModuleResult;
+  network: ModuleResult;
+  memory: ModuleResult;
+  security: ModuleResult & { score?: number | undefined };
+  deadCode: ModuleResult;
+  dependencies: ModuleResult;
+  async: ModuleResult;
+  config: ModuleResult;
+  performance: ModuleResult;
+  optimizer: ModuleResult;
+  renderBlocking: ModuleResult;
 }
 
 export async function runAudit(options: AuditOptions = {}): Promise<AuditResult> {
   const targetPath = options.targetPath || process.cwd();
-  let latencyUrl = options.latencyUrl || "http://localhost:3000";
+  // The audited URL is exactly what the caller asked for. If it is unreachable the
+  // network check fails — it is never silently swapped for an external site.
+  const latencyUrl = options.latencyUrl || "http://localhost:3000";
   const securityUrl = options.securityUrl || latencyUrl;
   const silent = options.silent || false;
-
-  try {
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const signal = controller ? controller.signal : undefined as any;
-    if (controller) setTimeout(() => controller.abort(), 800);
-    const res = await (globalThis as any).fetch?.(latencyUrl, { method: "HEAD", signal });
-    if (!res || !res.ok) {
-      latencyUrl = "https://jsonplaceholder.typicode.com/comments";
-    }
-  } catch (e) {
-    latencyUrl = "https://jsonplaceholder.typicode.com/comments";
-  }
 
   if (!silent) {
     console.log(`
@@ -242,6 +240,24 @@ ${CYAN}${BOLD}╔═════════════════════
     renderBlocking: { ok: true, errors: [] },
   };
 
+  const skipFlags: [keyof AuditResult, boolean | undefined][] = [
+    ["env", options.skipEnv],
+    ["network", options.skipNetwork],
+    ["memory", options.skipMemory],
+    ["security", options.skipSecurity],
+    ["deadCode", options.skipDeadCode],
+    ["dependencies", options.skipDependencies],
+    ["async", options.skipAsync],
+    ["config", options.skipConfig],
+    ["performance", options.skipPerformance],
+    ["optimizer", options.skipOptimizer],
+    ["renderBlocking", options.skipRenderBlocking],
+  ];
+  for (const [key, skip] of skipFlags) {
+    if (skip) result[key].skipped = true;
+  }
+  if (options.skipSecurity) delete result.security.score;
+
   section("1️⃣  STATIC ASSETS (Images)");
   try {
     const { violations } = runImagePerformanceAudit(targetPath);
@@ -265,32 +281,50 @@ ${CYAN}${BOLD}╔═════════════════════
 
   section("2️⃣  BUNDLE SIZE");
   try {
-    runComprehensiveBundleAudit(targetPath);
-    log("Bundle audit", "pass", "Within 14 KB round-trip budget");
+    const bundle = runComprehensiveBundleAudit(targetPath);
+    const bundleErrors = [
+      ...bundle.violations.map((v) => `${v.filePath} (${v.sizeKB} KB > ${v.limitKB} KB budget)`),
+      ...bundle.projectIssues,
+    ];
+    if (bundleErrors.length > 0) {
+      result.bundle.ok = false;
+      result.bundle.errors = bundleErrors;
+      log("Bundle audit", "fail", `${bundleErrors.length} issue(s) across ${bundle.scannedFiles} file(s)`);
+      for (const e of bundleErrors) {
+        console.log(`    ${RED}•${RESET} ${e}`);
+      }
+    } else if (bundle.skipped) {
+      result.bundle.skipped = true;
+      log("Bundle audit", "warn", "No source files found — nothing was measured");
+    } else {
+      log("Bundle audit", "pass", `${bundle.scannedFiles} file(s) within 14 KB round-trip budget`);
+    }
   } catch (err: any) {
     result.bundle.ok = false;
     result.bundle.errors = [err.message];
     log("Bundle audit", "fail", err.message);
   }
 
-  section("3️⃣  NETWORK LATENCY");
-  try {
-    const net = await performLiveLatencyAudit(latencyUrl);
-    if (!net.isOptimized) {
-      result.network.ok = false;
-      result.network.errors = net.reports;
-      log("Latency check", "fail", `${net.reports.length} issue(s)`);
-      for (const report of net.reports) {
-        console.log(`    ${YELLOW}•${RESET} ${report}`);
+  if (!options.skipNetwork) {
+    section("3️⃣  NETWORK LATENCY");
+    try {
+      const net = await performLiveLatencyAudit(latencyUrl);
+      if (!net.isOptimized) {
+        result.network.ok = false;
+        result.network.errors = net.reports;
+        log("Latency check", "fail", `${net.reports.length} issue(s)`);
+        for (const report of net.reports) {
+          console.log(`    ${YELLOW}•${RESET} ${report}`);
+        }
+        if (net.reachable) console.log(`    ${DIM}Measured: ${net.requestTimeMs}ms | Payload: ${net.payloadSizeKb.toFixed(2)} KB${RESET}`);
+      } else {
+        log("Latency check", "pass", `${net.requestTimeMs}ms / ${net.payloadSizeKb.toFixed(2)} KB`);
       }
-      console.log(`    ${DIM}Measured: ${net.requestTimeMs}ms | Payload: ${net.payloadSizeKb.toFixed(2)} KB${RESET}`);
-    } else {
-      log("Latency check", "pass", `${net.requestTimeMs}ms / ${net.payloadSizeKb.toFixed(2)} KB`);
+    } catch (err: any) {
+      result.network.ok = false;
+      result.network.errors = [err.message || "Network request failed"];
+      log("Latency check", "fail", err.message || "Request failed");
     }
-  } catch (err: any) {
-    result.network.ok = false;
-    result.network.errors = [err.message || "Network request failed"];
-    log("Latency check", "fail", err.message || "Request failed");
   }
 
   if (!options.skipMemory) {
@@ -593,33 +627,48 @@ ${CYAN}${BOLD}╔═════════════════════
     result.optimizer.ok &&
     result.renderBlocking.ok;
 
-  const rows: [string, string, number][] = [
-    ["Environment", result.env.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.env.errors.length],
-    ["Images", result.images.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.images.errors.length],
-    ["Bundle", result.bundle.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.bundle.errors.length],
-    ["Network", result.network.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.network.errors.length],
-    ["Memory", result.memory.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.memory.errors.length],
-    ["Security", result.security.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.security.errors.length],
-    ["Dead Code", result.deadCode.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.deadCode.errors.length],
-    ["Dependencies", result.dependencies.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.dependencies.errors.length],
-    ["Async", result.async.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.async.errors.length],
-    ["Config", result.config.ok ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`, result.config.errors.length],
-    ["Performance", result.performance.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.performance.errors.length],
-    ["Optimizer", result.optimizer.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.optimizer.errors.length],
-    ["Render Block", result.renderBlocking.ok ? `${GREEN}PASS${RESET}` : `${YELLOW}WARN${RESET}`, result.renderBlocking.errors.length],
+  const rows: [string, ModuleResult, "FAIL" | "WARN"][] = [
+    ["Environment", result.env, "FAIL"],
+    ["Images", result.images, "FAIL"],
+    ["Bundle", result.bundle, "FAIL"],
+    ["Network", result.network, "FAIL"],
+    ["Memory", result.memory, "WARN"],
+    ["Security", result.security, "FAIL"],
+    ["Dead Code", result.deadCode, "WARN"],
+    ["Dependencies", result.dependencies, "WARN"],
+    ["Async", result.async, "WARN"],
+    ["Config", result.config, "FAIL"],
+    ["Performance", result.performance, "WARN"],
+    ["Optimizer", result.optimizer, "WARN"],
+    ["Render Block", result.renderBlocking, "WARN"],
   ];
 
-  for (const [name, status, count] of rows) {
-    const detail = count > 0 ? `${count} issue(s)` : "clean";
-    const detailColor = count > 0 ? (name === "Security" || name === "Config" || name === "Environment" ? RED : YELLOW) : GREEN;
-    console.log(`  ${name.padEnd(15)} ${status.padEnd(12)} ${detailColor}${detail}${RESET}`);
+  for (const [name, mod, failLabel] of rows) {
+    const failColor = failLabel === "FAIL" ? RED : YELLOW;
+    const status = mod.skipped
+      ? `${DIM}SKIP${RESET}`
+      : mod.ok
+        ? `${GREEN}PASS${RESET}`
+        : `${failColor}${failLabel}${RESET}`;
+    const count = mod.errors.length;
+    const detail = mod.skipped ? `${DIM}not run${RESET}` : count > 0 ? `${failColor}${count} issue(s)${RESET}` : `${GREEN}clean${RESET}`;
+    console.log(`  ${name.padEnd(15)} ${status.padEnd(12)} ${detail}`);
   }
+  const skippedCount = rows.filter(([, mod]) => mod.skipped).length;
 
   console.log("");
   if (allOk) {
-    box([`${GREEN}${BOLD}✅ All checks passed!${RESET}`, `${DIM}Your project is clean and optimized.${RESET}`]);
+    box(
+      skippedCount > 0
+        ? [`${GREEN}${BOLD}✅ All executed checks passed.${RESET}`, `${YELLOW}${skippedCount} check(s) were skipped and are not verified.${RESET}`]
+        : [`${GREEN}${BOLD}✅ All checks passed!${RESET}`, `${DIM}Your project is clean and optimized.${RESET}`]
+    );
   } else {
-    const criticalCount = result.env.errors.length + result.security.errors.length + result.config.errors.length;
+    const criticalCount =
+      result.images.errors.length +
+      result.bundle.errors.length +
+      result.network.errors.length +
+      result.env.errors.length + result.security.errors.length + result.config.errors.length;
     const warningCount =
       result.memory.errors.length +
       result.deadCode.errors.length +
@@ -699,6 +748,7 @@ if (isMain || process.argv[1]?.endsWith("index.ts")) {
   const args = process.argv.slice(2);
   const opts: AuditOptions = {
     skipEnv: args.includes("--skip-env"),
+    skipNetwork: args.includes("--skip-network"),
     skipMemory: args.includes("--skip-memory"),
     skipSecurity: args.includes("--skip-security"),
     skipDeadCode: args.includes("--skip-dead-code"),
