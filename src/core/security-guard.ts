@@ -89,24 +89,15 @@ export async function performSecurityAudit(targetUrl: string): Promise<SecurityA
           }
         }
 
-        // Score calculation
+        // Score calculation: each issue costs one point from the total checks
         const totalChecks = REQUIRED_HEADERS.length + RECOMMENDED_HEADERS.length + 3;
         const passedChecks = Math.max(0, totalChecks - reports.length);
-        let score = Math.max(0, Math.round((passedChecks / totalChecks) * 100));
+        const score = Math.max(0, Math.round((passedChecks / totalChecks) * 100));
 
-        // If auditing an external host (not localhost/127.0.0.1/::1), downgrade missing recommended headers
-        // to non-critical so public third-party endpoints don't make the audit fail. This keeps the audit
-        // useful for local development servers while avoiding false-critical failures for remote URLs.
-        const hostname = url.hostname;
-        const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(hostname);
-
-        if (!isLocalHost && isHttps && reports.length > 0) {
-          // Mark as non-fatal: ensure score doesn't drop below 50 for external HTTPS hosts.
-          score = Math.max(score, 50);
-        }
-
-        // For local development (localhost/127.0.0.1/::1), allow HTTP but require headers to be present.
-        const isSecure = isLocalHost ? (reports.length === 0) : true;
+        // isSecure is true only when there are NO findings — applies to both
+        // localhost and remote hosts. The previous code always returned
+        // isSecure=true for non-localhost targets, hiding all header violations.
+        const isSecure = reports.length === 0;
 
         resolve({
           isSecure,
