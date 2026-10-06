@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/Ayaalmadhon2004/Muraqib#readme",
   "devDependencies": {
-    "@types/node": "^25.9.2",
+    "@types/node": "^25.9.9",
     "@types/semver": "^7.7.1",
     "@typescript-eslint/eslint-plugin": "^8.68.0",
     "@typescript-eslint/parser": "^8.68.0",
