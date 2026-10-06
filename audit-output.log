@@ -1,0 +1,129 @@
+
+> muraqib@1.0.0 audit:ci
+> tsx scripts/collect-audit.ts
+
+
+📷 [Muraqib]: Starting Image Assets Size Audit...
+✅ [Muraqib]: All images are optimized and under the 500KB safety limit.
+🔍 [Muraqib Engine]: Scanning workspace source files against the 14KB budget...
+    [31m•[0m src/core/config-guard.js (24.28 KB > 14 KB budget)
+    [31m•[0m src/core/config-guard.ts (23.31 KB > 14 KB budget)
+    [31m•[0m src/env.ts (16.95 KB > 14 KB budget)
+    [33m•[0m Unreachable code: src/index.ts:25 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/utils/schedule-validator.ts:6 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/utils/schedule-validator.ts:13 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/utils/schedule-validator.ts:22 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/utils/schedule-validator.ts:27 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/shared/utils.ts:4 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/shared/utils.ts:44 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/shared/utils.ts:52 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/shared/utils.ts:55 — appears right after a "return" statement
+    [33m•[0m Potentially unused export: src/shared/constants.ts:13 — "DEFAULT_CONFIG" is not imported anywhere else
+    [33m•[0m Potentially unused export: src/shared/constants.ts:21 — "AUDIT_MODULES" is not imported anywhere else
+    [33m•[0m Potentially unused export: src/rules/http1-advisor.ts:1 — "analyzeHTTP1Compliance" is not imported anywhere else
+    [33m•[0m Unreachable code: src/rules/bundle-budget.ts:94 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/rules/bundle-budget.ts:121 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/rules/bundle-budget.ts:129 — appears right after a "continue;" statement
+    [33m•[0m Potentially unused export: src/rules/bundle-budget.ts:5 — "checkLazyLoadingNecessity" is not imported anywhere else
+    [33m•[0m Potentially unused export: src/rules/bundle-budget.ts:28 — "checkHeavyImports" is not imported anywhere else
+    [33m•[0m Potentially unused export: src/rules/bundle-budget.ts:50 — "checkMinificationSettings" is not imported anywhere else
+    [33m•[0m Potentially unused export: src/rules/bundle-budget.ts:71 — "BundleViolation" is not imported anywhere else
+    [33m•[0m Potentially unused export: src/rules/bundle-budget.ts:78 — "BundleAuditResult" is not imported anywhere else
+    [33m•[0m Unreachable code: src/renderers/index.ts:74 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/renderers/index.ts:76 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/renderers/index.ts:78 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/renderers/index.ts:80 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/renderers/index.ts:87 — appears right after a "return" statement
+    [33m•[0m Potentially unused export: src/presets/arktype.ts:4 — "vercel" is not imported anywhere else
+    [33m•[0m Potentially unused export: src/presets/arktype.ts:16 — "neonVercel" is not imported anywhere else
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:95 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:107 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:110 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:114 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:122 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:126 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:134 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:138 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:146 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:150 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:158 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:162 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:170 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:174 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:182 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:186 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:194 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:198 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:243 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:251 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:255 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:297 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:301 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:309 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:341 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:356 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/orchestrator/audit.ts:363 — appears right after a "throw" statement
+    [33m•[0m Potentially unused export: src/orchestrator/audit.ts:43 — "ModuleResult" is not imported anywhere else
+    [33m•[0m Potentially unused export: src/orchestrator/audit.ts:304 — "analyzeRenderBlocking" is not imported anywhere else
+    [33m•[0m Unreachable code: src/core/validate.ts:15 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/validate.ts:39 — appears right after a "throw" statement
+    [33m•[0m Unreachable code: src/core/validate.ts:43 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/standard.ts:21 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:169 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:177 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:181 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:205 — appears right after a "continue;" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:237 — appears right after a "continue;" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:253 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:257 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:289 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:314 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:318 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:322 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:330 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:340 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:351 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:358 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:364 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:375 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:383 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:410 — appears right after a "continue;" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:414 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:447 — appears right after a "continue;" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:453 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:466 — appears right after a "return;" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:481 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:494 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:519 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:528 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:545 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:552 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/config-guard.ts:677 — appears right after a "continue;" statement
+    [33m•[0m Unreachable code: src/core/performance/image-guard.ts:35 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/performance/image-guard.ts:43 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/core/performance/image-guard.ts:53 — appears right after a "continue;" statement
+    [33m•[0m Unreachable code: src/cli/workflow.ts:352 — appears right after a "return" statement
+    [33m•[0m Unreachable code: src/cli/index.ts:35 — appears right after a "return" statement
+    [33m•[0m Unreachable code: scripts/collect-audit.ts:64 — appears right after a "throw" statement
+    [33m•[0m Unreachable code: examples/express-prisma/src/server.ts:31 — appears right after a "return;" statement
+    [33m•[0m Unreachable code: examples/express-prisma/src/repositories/prisma-user.repository.ts:10 — appears right after a "return" statement
+    [33m•[0m Unreachable code: examples/express-prisma/src/repositories/prisma-user.repository.ts:15 — appears right after a "return" statement
+    [33m•[0m Deprecated API usage in src/core/dependency-guard.js: /\burl\.parse\b/ -> Use new URL() constructor instead
+    [33m•[0m Deprecated API usage in src/core/dependency-guard.js: /\bBuffer\s*\(/ -> Avoid calling Buffer() as a function; use Buffer.from/alloc
+    [33m•[0m Deprecated API usage in src/core/dependency-guard.js: /__dirname\b/ -> Use import.meta.url with fileURLToPath instead (ESM)
+    [33m•[0m Potentially outdated: sharp@^0.35.4 (v0.x detected)
+  Environment     [32mPASS[0m [32mclean[0m
+  Images          [32mPASS[0m [32mclean[0m
+  Bundle          [31mFAIL[0m [31m3 issue(s)[0m
+  Network         [2mSKIP[0m [2mnot run[0m
+  Memory          [2mSKIP[0m [2mnot run[0m
+  Security        [2mSKIP[0m [2mnot run[0m
+  Dead Code       [33mWARN[0m [33m99 issue(s)[0m
+  Dependencies    [33mWARN[0m [33m4 issue(s)[0m
+  Async           [32mPASS[0m [32mclean[0m
+  Config          [32mPASS[0m [32mclean[0m
+  Performance     [2mSKIP[0m [2mnot run[0m
+  Optimizer       [2mSKIP[0m [2mnot run[0m
+  Render Block    [32mPASS[0m [32mclean[0m
+
+

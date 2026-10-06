@@ -2,7 +2,14 @@ import { COLORS } from "../shared/constants.js";
 
 const { RESET, RED, GREEN, YELLOW, CYAN, DIM, BOLD } = COLORS;
 
+let isSilent = false;
+
+export function setSilent(silent: boolean) {
+  isSilent = silent;
+}
+
 export function log(title: string, status: "pass" | "fail" | "warn", message?: string) {
+  if (isSilent) return;
   const icon = status === "pass"
     ? `${GREEN}[PASS]${RESET}`
     : status === "fail"
@@ -12,12 +19,14 @@ export function log(title: string, status: "pass" | "fail" | "warn", message?: s
 }
 
 export function section(name: string) {
+  if (isSilent) return;
   console.log(`
 ${CYAN}${BOLD}${name}${RESET}`);
   console.log(`${DIM}${"-".repeat(60)}${RESET}`);
 }
 
 export function box(lines: string[]) {
+  if (isSilent) return;
   const width = Math.max(...lines.map((l) => l.length), 40);
   console.log(`  ${DIM}┌${"─".repeat(width + 2)}┐${RESET}`);
   for (const line of lines) {
@@ -27,6 +36,7 @@ export function box(lines: string[]) {
 }
 
 export function renderHeader(targetPath: string) {
+  if (isSilent) return;
   console.log(`
 ${CYAN}${BOLD}╔════════════════════════════════════════════════════════════╗${RESET}`);
   console.log(`${CYAN}${BOLD}║        MURAQIB — COMPREHENSIVE AUDIT REPORT              ║${RESET}`);

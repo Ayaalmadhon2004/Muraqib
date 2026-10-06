@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { log, error, warn } from '../shared/logger.js';
 
 export const checkLazyLoadingNecessity = (filePath: string): string[] => {
     if (!fs.existsSync(filePath)) return [];
@@ -133,15 +134,15 @@ export const runComprehensiveBundleAudit = (targetPath?: string): BundleAuditRes
         const filePath = path.relative(projectRoot, file);
         violations.push({ filePath, sizeKB: Number(sizeKB.toFixed(2)), limitKB: BUNDLE_LIMIT_KB, suggestions });
 
-        console.error(`❌ [Budget Violation]: ${filePath} is ${sizeKB.toFixed(2)}KB (limit ${BUNDLE_LIMIT_KB}KB).`);
-        suggestions.forEach(msg => console.warn(msg));
+        error(`❌ [Budget Violation]: ${filePath} is ${sizeKB.toFixed(2)}KB (limit ${BUNDLE_LIMIT_KB}KB).`);
+        suggestions.forEach(msg => warn(msg));
     }
 
     const projectIssues = checkMinificationSettings(projectRoot);
-    projectIssues.forEach(msg => console.warn(msg));
+    projectIssues.forEach(msg => warn(msg));
 
     if (violations.length === 0 && projectIssues.length === 0) {
-        console.log(`✅ [Muraqib]: All ${files.length} source file(s) are within the ${BUNDLE_LIMIT_KB}KB budget.`);
+        log(`✅ [Muraqib]: All ${files.length} source file(s) are within the ${BUNDLE_LIMIT_KB}KB budget.`);
     }
 
     return { scannedFiles: files.length, skipped: false, violations, projectIssues };

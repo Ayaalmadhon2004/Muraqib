@@ -1,4 +1,5 @@
 import { toMessage } from "../shared/utils.js";
+import { setSilentMode } from "../shared/logger.js";
 import {
   type AuditOptions,
   type AuditResult,
@@ -18,7 +19,7 @@ import {
   runRenderBlockingAudit,
   runUpgradePackages,
 } from "../orchestrator/audit.js";
-import { log, section, renderHeader, renderSummary, Colors } from "../renderers/index.js";
+import { log, section, renderHeader, renderSummary, Colors, setSilent } from "../renderers/index.js";
 
 const { RED, GREEN, YELLOW, DIM, RESET } = Colors;
 
@@ -28,9 +29,9 @@ export async function runAuditWorkflow(options: AuditOptions = {}): Promise<Audi
   const securityUrl = options.securityUrl || latencyUrl;
   const silent = options.silent || false;
 
-  if (!silent) {
-    renderHeader(targetPath);
-  }
+  setSilent(silent);
+  setSilentMode(silent);
+  renderHeader(targetPath);
 
   const result = createInitialAuditResult();
 
