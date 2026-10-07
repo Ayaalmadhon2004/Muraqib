@@ -4,6 +4,7 @@
 
 **Developer Environment Guardian & Performance Auditor**
 
+[![CI](https://github.com/Ayaalmadhon2004/Muraqib/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Ayaalmadhon2004/Muraqib/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Zod](https://img.shields.io/badge/Zod-4.x-3E67B1?logo=zod&logoColor=white)](https://zod.dev/)

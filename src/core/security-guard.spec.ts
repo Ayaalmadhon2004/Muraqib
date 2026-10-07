@@ -183,7 +183,7 @@ describe("performSecurityAudit", () => {
     testServer = await startMockServer(9010, {});
 
     // Create a server that never responds
-    const slowServer = http.createServer((req, res) => {
+    const slowServer = http.createServer((_req, _res) => {
       // Never send response - will cause timeout
     });
 

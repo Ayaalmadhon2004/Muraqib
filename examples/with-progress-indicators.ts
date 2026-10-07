@@ -120,7 +120,7 @@ async function main() {
 
 // Run if executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  await main();
 }
 
 export { auditProjectWithMetrics };

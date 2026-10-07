@@ -6,14 +6,14 @@ const BUNDLE_LIMIT_KB = 14;
 const SUPPORTED_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js', '.svelte', '.vue'];
 const SKIP_DIR_NAMES = new Set(['node_modules', 'dist', 'build', 'coverage', 'out']);
 
-export interface BundleViolation {
+interface BundleViolation {
     filePath: string;
     sizeKB: number;
     limitKB: number;
     suggestions: string[];
 }
 
-export interface BundleAuditResult {
+interface BundleAuditResult {
     /** Number of source files that were actually measured. */
     scannedFiles: number;
     /** True when nothing could be measured — the caller must NOT report this as a pass. */

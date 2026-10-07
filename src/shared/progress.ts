@@ -3,18 +3,7 @@
  * Provides visual feedback during long-running tasks.
  */
 
-export interface ProgressOptions {
-  silent?: boolean;
-  title?: string;
-}
-
 export type AuditTimer = StepTimer;
-
-export interface AuditTimerInterface {
-  start(): void;
-  end(): string;
-  getDuration(): number;
-}
 
 class SimpleProgress {
   private silent: boolean;

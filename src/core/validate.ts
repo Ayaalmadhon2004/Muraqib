@@ -7,7 +7,7 @@ async function getChalk() {
     try {
       const module = await import('chalk');
       chalkInstance = module.default;
-    } catch (err) {
+    } catch (_err) {
       chalkInstance = null;
     }
   }

@@ -1,0 +1,44 @@
+# Development files
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.github
+
+# Build and test
+.vitest
+coverage
+*.spec.ts
+*.test.ts
+tsconfig.json
+vitest.config.ts
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Documentation (not needed in npm package)
+DEVELOPER_GUIDE.md
+REFACTORING_CHECKLIST.md
+REFACTORING_SUMMARY.md
+IMPROVEMENTS.md
+PROGRESS_GUIDE.md
+OPTIMIZATION_SUMMARY.md
+AUDIT.md
+CLAUDE.md
+audit-output.log
+
+# Examples (not needed in package)
+examples/
+
+# Scripts
+scripts/
+
+# Source map files
+**/*.map

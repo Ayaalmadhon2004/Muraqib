@@ -13,7 +13,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function stripJsonCommentsAndTrailingCommas(input: string): string {
-  const text = input.replace(/^﻿/, "");
+  // Remove UTF-8 BOM if present
+  const text = input.startsWith('﻿') ? input.slice(1) : input;
 
   let noComments = "";
   let inString = false;
