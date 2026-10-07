@@ -1,8 +1,9 @@
-/**
- * DeadCodeAudit: أداة فحص ذكية لتحليل الكود الميت.
- */
 import { scanProjectFiles } from "../utils/file-scanner.js";
 
+/**
+ * Result of a dead code audit
+ * @interface DeadCodeAuditResult
+ */
 export interface DeadCodeAuditResult {
   isClean: boolean;
   reports: string[];
@@ -11,6 +12,17 @@ export interface DeadCodeAuditResult {
   unusedExports: string[];
 }
 
+/**
+ * Performs a comprehensive dead code analysis on a project.
+ * Detects empty functions, unreachable code paths, and unused exports.
+ * Respects muraqib-ignore-dead and muraqib-unreachable suppression comments.
+ *
+ * @param targetPath - Root directory path to scan
+ * @returns DeadCodeAuditResult with detailed reports on detected issues
+ * @example
+ * const result = performDeadCodeAudit('./src');
+ * if (!result.isClean) console.log(result.reports);
+ */
 export function performDeadCodeAudit(targetPath: string): DeadCodeAuditResult {
   const reports: string[] = [];
   const emptyFunctions: string[] = [];
