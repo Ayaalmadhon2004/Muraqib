@@ -17,7 +17,6 @@ export { auditPerformance, analyzeHttpProfile } from "./core/performance/optimiz
 
 // Re-export orchestrator types and functions
 export type { AuditOptions, AuditResult, ModuleResult } from "./orchestrator/audit.js";
-export { analyzeRenderBlocking } from "./orchestrator/audit.js";
 
 // Main audit function for API usage
 export async function runAudit(options: AuditOptions = {}): Promise<AuditResult> {
