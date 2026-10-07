@@ -2,6 +2,10 @@ import https from "https";
 import http from "http";
 import { URL } from "url";
 
+/**
+ * Result of a security audit on an HTTP endpoint
+ * @interface SecurityAuditResult
+ */
 export interface SecurityAuditResult { // muraqib-ignore-dead: auto-suppressed by script for SecurityAuditResult
   isSecure: boolean;
   reports: string[];
@@ -23,6 +27,17 @@ const RECOMMENDED_HEADERS = [
   "cross-origin-opener-policy",
 ];
 
+/**
+ * Performs a comprehensive security audit on an HTTP/HTTPS endpoint.
+ * Checks for required and recommended security headers, validates header values,
+ * and provides a security score (0-100). Fails open with isSecure=false on errors.
+ *
+ * @param targetUrl - The URL to audit (http:// or https://)
+ * @returns Promise resolving to a SecurityAuditResult with headers, reports, and score
+ * @example
+ * const result = await performSecurityAudit("https://example.com");
+ * if (!result.isSecure) console.log(result.reports);
+ */
 export async function performSecurityAudit(targetUrl: string): Promise<SecurityAuditResult> {
   const reports: string[] = [];
   const url = new URL(targetUrl);

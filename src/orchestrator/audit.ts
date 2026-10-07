@@ -18,6 +18,10 @@ import { createEnvWithPresets, safeCreateEnv } from "../env.js";
 import { runMuraqibUpgradeOrchestrator } from "../core/orchestrator.js";
 import { toMessage, extractEnvErrors } from "../shared/utils.js";
 
+/**
+ * Options for comprehensive project audit
+ * @interface AuditOptions
+ */
 export interface AuditOptions {
   targetPath?: string | undefined;
   latencyUrl?: string | undefined;
@@ -41,12 +45,20 @@ export interface AuditOptions {
   exitProcess?: boolean | undefined;
 }
 
+/**
+ * Result of a single audit module
+ * @interface ModuleResult
+ */
 export interface ModuleResult {
   ok: boolean;
   errors: string[];
   skipped?: boolean | undefined;
 }
 
+/**
+ * Aggregated result from all 13 audit modules
+ * @interface AuditResult
+ */
 export interface AuditResult {
   env: ModuleResult;
   images: ModuleResult;
@@ -63,6 +75,10 @@ export interface AuditResult {
   renderBlocking: ModuleResult;
 }
 
+/**
+ * Creates a fresh audit result with all modules initialized to ok=true
+ * @returns AuditResult with clean state across all 13 modules
+ */
 export function createInitialAuditResult(): AuditResult {
   return {
     env: { ok: true, errors: [] },
@@ -81,6 +97,11 @@ export function createInitialAuditResult(): AuditResult {
   };
 }
 
+/**
+ * Audits image assets for size violations (> 500 KB)
+ * @param targetPath - Project root directory
+ * @returns ModuleResult with violations listed in errors
+ */
 export async function runImageAudit(targetPath: string): Promise<ModuleResult> {
   try {
     const { violations } = runImagePerformanceAudit(targetPath);
@@ -96,6 +117,11 @@ export async function runImageAudit(targetPath: string): Promise<ModuleResult> {
   }
 }
 
+/**
+ * Audits bundle size against 14 KB round-trip budget
+ * @param targetPath - Project root directory
+ * @returns ModuleResult with violations if bundle exceeds budget
+ */
 export async function runBundleAudit(targetPath: string): Promise<ModuleResult> {
   try {
     const bundle = runComprehensiveBundleAudit(targetPath);
@@ -139,6 +165,11 @@ export async function runMemoryAudit(): Promise<ModuleResult> {
   }
 }
 
+/**
+ * Audits HTTP endpoint for security headers and best practices
+ * @param securityUrl - Full URL to audit (http or https)
+ * @returns ModuleResult with security score (0-100) and header violations
+ */
 export async function runSecurityAudit(securityUrl: string): Promise<ModuleResult & { score?: number }> {
   try {
     const sec = await performSecurityAudit(securityUrl);
@@ -151,6 +182,11 @@ export async function runSecurityAudit(securityUrl: string): Promise<ModuleResul
   }
 }
 
+/**
+ * Audits codebase for empty functions, unreachable code, and unused exports
+ * @param targetPath - Project root directory
+ * @returns ModuleResult with dead code locations and severity
+ */
 export async function runDeadCodeAudit(targetPath: string): Promise<ModuleResult> {
   try {
     const dead = performDeadCodeAudit(targetPath);
@@ -199,6 +235,12 @@ export async function runConfigAudit(targetPath: string): Promise<ModuleResult> 
   }
 }
 
+/**
+ * Audits environment variables and configuration with optional presets
+ * @param _targetPath - Project root directory (for consistency with other audits)
+ * @param options - Audit options including presets, schedule guard, and safe mode
+ * @returns ModuleResult with validation errors if any required vars are missing
+ */
 export async function runEnvAudit(
   _targetPath: string,
   options: { presets?: string[]; schedule?: string; safe?: boolean }

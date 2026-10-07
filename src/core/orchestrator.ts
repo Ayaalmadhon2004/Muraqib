@@ -5,6 +5,10 @@ import { MURAQIB_LOCAL_PRESETS, fetchRemoteMuraqibPresets } from '../config/pres
 import type { PackageGroup } from '../config/presets.js'; 
 import { detectProjectPackageManager } from '../utils/manager-detector.js'; 
 
+/**
+ * Configuration for a schema migration during package upgrade
+ * @interface SchemaMigrationRule
+ */
 interface SchemaMigrationRule {
   packageName: string;
   breakingMajor: number;
@@ -12,6 +16,13 @@ interface SchemaMigrationRule {
   description: string;
 }
 
+/**
+ * Validates a command string for safe execution.
+ * Checks for empty, excessive length, and multiline content.
+ *
+ * @param cmd - Command string to validate
+ * @returns true if command is safe to execute, false otherwise
+ */
 function isValidCommand(cmd: string): boolean {
   if (!cmd || typeof cmd !== 'string' || cmd.trim().length === 0) {
     return false;
@@ -65,14 +76,33 @@ const SCHEMA_MIGRATIONS_REGISTRY: SchemaMigrationRule[] = [
   }
 ];
 
+/**
+ * Configuration for the package upgrade orchestrator
+ * @interface OrchestratorConfig
+ */
 export interface OrchestratorConfig { // muraqib-ignore-dead: auto-suppressed by script for OrchestratorConfig
   packageName: string;
-  currentValue: string; 
-  newVersion: string;   
+  currentValue: string;
+  newVersion: string;
   rangeStrategy: 'replace' | 'widen' | 'bump';
-  remotePresetUrl?: string; 
+  remotePresetUrl?: string;
 }
 
+/**
+ * Orchestrates intelligent package upgrades with schema migrations and build verification.
+ * Handles version bumping, automatic codemods for breaking changes (Tailwind, Prisma, Next.js, React, ESLint, Zustand),
+ * and validates build integrity after upgrade. Preserves unsaved changes via Git rollback on failure.
+ *
+ * @param config - OrchestratorConfig with package details and upgrade strategy
+ * @returns Promise with updatedVersion (or null if skipped), schemaMigrated flag, and optional skipReason
+ * @example
+ * const result = await runMuraqibUpgradeOrchestrator({
+ *   packageName: 'react',
+ *   currentValue: '^18.0.0',
+ *   newVersion: '^19.0.0',
+ *   rangeStrategy: 'replace'
+ * });
+ */
 export async function runMuraqibUpgradeOrchestrator({
   packageName,
   currentValue,

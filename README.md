@@ -4,10 +4,11 @@
 
 **Developer Environment Guardian & Performance Auditor**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Zod](https://img.shields.io/badge/Zod-3.x-3E67B1?logo=zod&logoColor=white)](https://zod.dev/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Zod](https://img.shields.io/badge/Zod-4.x-3E67B1?logo=zod&logoColor=white)](https://zod.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-2.x-6E9F1F?logo=vitest&logoColor=white)](https://vitest.dev/)
+[![License](https://img.shields.io/badge/License-ISC-yellow.svg)](LICENSE)
 
 <p dir="rtl">
 <strong>مراقب</strong> هو أداة تدقيق شاملة لبيئات التطوير — تفحص، ترصد، وتحسّن أداء مشاريعك بذكاء.
@@ -221,32 +222,6 @@ npm run dev-server
 ```
 
 The demo listens on port `3000` by default. Set `PORT` or `DATABASE_URL` in `examples/express-prisma/.env` to customize it.
-
-## 💻 CLI Usage
-
-```
-Usage: npx tsx src/index.ts [options]
-
-Options:
-  --path <dir>              Target project directory (default: cwd)
-  --url <url>               Latency test endpoint
-  --security-url <url>      Security audit endpoint
-  --skip-env                Skip environment validation
-  --skip-memory             Skip memory audit
-  --skip-security           Skip security headers audit
-  --skip-dead-code          Skip dead code detection
-  --skip-dependencies       Skip dependency analysis
-  --skip-async              Skip async patterns audit
-  --skip-config             Skip configuration validation
-  --skip-performance        Skip performance cache audit
-  --skip-optimizer          Skip HTTP optimizer audit
-  --skip-render-blocking    Skip render blocking audit
-  --silent                  Suppress all output
-  --safe                    Use safeCreateEnv (no throws)
-  --schedule <cron>         Cron schedule gate (e.g. "0 9 * * 1-5")
-  --presets <list>          Comma-separated preset names
-  --upgrade                 Run package upgrade orchestrator
-```
 
 ---
 

@@ -47,7 +47,7 @@ describe("performSecurityAudit", () => {
 
   it("passes audit when all required and recommended headers are present with secure values", async () => {
     testServer = await startMockServer(9002, {
-      "content-security-policy": "default-src 'self'",
+      "content-security-policy": "default-src 'self'; font-src 'self'; img-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'",
       "x-frame-options": "DENY",
       "x-content-type-options": "nosniff",
       "referrer-policy": "no-referrer",
@@ -60,7 +60,7 @@ describe("performSecurityAudit", () => {
     const result = await performSecurityAudit("http://localhost:9002");
 
     expect(result.isSecure).toBe(true);
-    expect(result.reports).toEqual([]);
+    expect(result.reports.length).toBe(0);
     expect(result.score).toBe(100);
   });
 
@@ -202,7 +202,7 @@ describe("performSecurityAudit", () => {
 
   it("handles case-insensitive header names", async () => {
     testServer = await startMockServer(9012, {
-      "Content-Security-Policy": "default-src 'self'",
+      "Content-Security-Policy": "default-src 'self'; font-src 'self'; img-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'",
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
@@ -219,7 +219,7 @@ describe("performSecurityAudit", () => {
 
   it("correctly processes HSTS header with additional directives", async () => {
     testServer = await startMockServer(9013, {
-      "content-security-policy": "default-src 'self'",
+      "content-security-policy": "default-src 'self'; font-src 'self'; img-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'",
       "x-frame-options": "DENY",
       "x-content-type-options": "nosniff",
       "referrer-policy": "no-referrer",
