@@ -188,7 +188,7 @@ export async function runMuraqibUpgradeOrchestrator({
         execSync(migrationRule.migrationCommand, { stdio: 'inherit' });
         console.log(`✅ [Success]: Automated syntax for ${packageName} has been auto-healed!`);
         schemaMigrated = true;
-      } catch (migrationError) {
+      } catch (_migrationError) {
         console.error(`❌ [Error]: Automated schema migration failed for ${packageName}. Proceeding with cautious testing.`);
       }
     } else {
@@ -206,7 +206,7 @@ export async function runMuraqibUpgradeOrchestrator({
     try {
       execSync(targetBuildCommand, { stdio: 'ignore' });
       console.log(`💎 [Integrity Success]: Project build passed smoothly on [${envMeta.type.toUpperCase()}] environment! Safe to commit.`);
-    } catch (buildError) {
+    } catch (_buildError) {
       console.error(`💥 [Integrity Failure]: Project build failed after updating ${packageName}!`);
       console.log(`⚠️  [Warning]: Build failed. The package upgrade has been applied but the build needs to be fixed before committing.`);
       console.log(`🔍 [Next Steps]: Review the error above and fix the build issues, then run the build command again.`);

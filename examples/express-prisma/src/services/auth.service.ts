@@ -16,7 +16,7 @@ export class AuthService {
         password: hashedPassword,
       });
       return user;
-    } catch (error) {
+    } catch (_error) {
     throw new HttpException(422, { errors: { email: ['could not create user'] } });
     }
   }
