@@ -9,31 +9,6 @@ export const COLORS = {
   BOLD: "\x1b[1m",
 } as const;
 
-// Default configuration
-export const DEFAULT_CONFIG = {
-  TARGET_PATH: process.cwd(),
-  LATENCY_URL: "http://localhost:3000",
-  IMAGE_SIZE_LIMIT_KB: 500,
-  BUNDLE_SIZE_LIMIT_KB: 14,
-} as const;
-
-// Audit module names
-export const AUDIT_MODULES = [
-  "env",
-  "images",
-  "bundle",
-  "network",
-  "memory",
-  "security",
-  "deadCode",
-  "dependencies",
-  "async",
-  "config",
-  "performance",
-  "optimizer",
-  "renderBlocking",
-] as const;
-
 // CLI flags
 export const CLI_FLAGS = {
   SKIP_ENV: "--skip-env",

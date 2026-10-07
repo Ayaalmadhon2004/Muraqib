@@ -302,26 +302,6 @@ export async function runOptimizerAudit(targetPath: string, url: string): Promis
   }
 }
 
-export function analyzeRenderBlocking(htmlContent: string) {
-  const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
-
-  if (!headMatch) {
-    return { status: "ok" as const, isOptimized: true, blockingScripts: 0, blockingStyles: 0 };
-  }
-
-  const headContent = headMatch[0];
-  const blockingScripts = (headContent.match(/<script(?!\s+(?:defer|async))[^>]*>/gi) || []).length;
-  const blockingStyles = (headContent.match(/<link[^>]*rel=["']stylesheet["'][^>]*>/gi) || []).length;
-
-  const isOptimized = blockingScripts === 0;
-
-  return {
-    status: isOptimized ? ("ok" as const) : ("issues" as const),
-    blockingScripts,
-    blockingStyles,
-    isOptimized,
-  };
-}
 
 export async function runRenderBlockingAudit(targetPath: string): Promise<ModuleResult> {
   try {
@@ -335,23 +315,33 @@ export async function runRenderBlockingAudit(targetPath: string): Promise<Module
       /* ignore missing HTML */
     }
 
-    const result = analyzeRenderBlocking(htmlContent);
+    if (!htmlContent) {
+      return { ok: true, errors: [], skipped: true };
+    }
 
-    if (result.status === "ok") {
+    const headMatch = htmlContent.match(/<head>[\s\S]*?<\/head>/i);
+    if (!headMatch) {
       return { ok: true, errors: [] };
     }
 
+    const headContent = headMatch[0];
+    const blockingScripts = (headContent.match(/<script(?!\s+(?:defer|async))[^>]*>/gi) || []).length;
+    const blockingStyles = (headContent.match(/<link[^>]*rel=["']stylesheet["'][^>]*>/gi) || []).length;
+
     const reports: string[] = [];
-    if (result.blockingScripts > 0) {
-      reports.push(`تحذير: لديك ${result.blockingScripts} سكريبتات تحجب الرندرة في الـ head!`);
+    if (blockingScripts > 0) {
+      reports.push(`تحذير: لديك ${blockingScripts} سكريبتات تحجب الرندرة في الـ head!`);
     }
-    if (result.blockingStyles > 0) {
+    if (blockingStyles > 0) {
       reports.push(
-        `ملاحظة: لديك ${result.blockingStyles} ملف CSS blocking في الـ head. فكّري باستخدام media queries أو preload.`
+        `ملاحظة: لديك ${blockingStyles} ملف CSS blocking في الـ head. فكّري باستخدام media queries أو preload.`
       );
     }
 
-    return { ok: false, errors: reports };
+    if (reports.length > 0) {
+      return { ok: false, errors: reports };
+    }
+    return { ok: true, errors: [] };
   } catch (err: unknown) {
     return { ok: false, errors: [toMessage(err)] };
   }

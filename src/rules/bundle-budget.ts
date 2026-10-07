@@ -2,68 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { log, error, warn } from '../shared/logger.js';
 
-export const checkLazyLoadingNecessity = (filePath: string): string[] => {
-    if (!fs.existsSync(filePath)) return [];
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    
-    const heavyComponents = ['Comments', 'Map', 'Chart', 'Editor', 'VideoPlayer'];
-    const suggestions: string[] = [];
-
-    heavyComponents.forEach(component => {
-        const isComponentUsed = fileContent.includes(`import ${component}`) || fileContent.includes(`<${component}`);
-        const isAlreadyLazy = fileContent.includes('dynamic(') || fileContent.includes('lazy(') || fileContent.includes('defineAsyncComponent');
-
-        if (isComponentUsed && !isAlreadyLazy) {
-            suggestions.push(
-                `💡 [Muraqib Suggestion]: Heavy component '${component}' detected in workspace. Consider using lazy/dynamic loading to preserve initial bundle budget:\n` +
-                `   👉 Next.js/React: const ${component} = dynamic(() => import('./components/${component}'), { ssr: false });\n` +
-                `   👉 Vue/Svelte:    const ${component} = defineAsyncComponent(() => import('./${component}.vue'));`
-            );
-        }
-    });
-
-    return suggestions;
-};
-
-export const checkHeavyImports = (filePath: string): string[] => {
-    if (!fs.existsSync(filePath)) return [];
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const suggestions: string[] = [];
-
-    if (fileContent.includes("import _ from 'lodash'") || fileContent.includes("import lodash from 'lodash'")) {
-        suggestions.push(
-            `⚠️ [Muraqib Optimization]: You are importing the ENTIRE 'lodash' library! This breaks your 14KB first-byte budget.\n` +
-            `   👉 Fix: Import only the isolated module: import cloneDeep from 'lodash/cloneDeep';`
-        );
-    }
-
-    if (fileContent.includes("import * as Icons from '@mui/icons-material'")) {
-        suggestions.push(
-            `⚠️ [Muraqib Optimization]: Importing global MUI icons namespace will heavily bloat your compile bundle size.\n` +
-            `   👉 Fix: Destructure specific asset components: import SettingsIcon from '@mui/icons-material/Settings';`
-        );
-    }
-
-    return suggestions;
-};
-
-export const checkMinificationSettings = (projectRoot: string): string[] => {
-    const nextConfigPath = path.join(projectRoot, 'next.config.js');
-    const suggestions: string[] = [];
-
-    if (fs.existsSync(nextConfigPath)) {
-        const configContent = fs.readFileSync(nextConfigPath, 'utf-8');
-        if (configContent.includes('swcMinify: false')) {
-            suggestions.push(
-                `🚨 [Muraqib Critical]: Minification optimization is explicitly disabled ('swcMinify: false')!\n` +
-                `   👉 Fix: Enforce 'swcMinify: true' inside your next.config.js layout to compress web assets.`
-            );
-        }
-    }
-    
-    return suggestions;
-};
-
 const BUNDLE_LIMIT_KB = 14;
 const SUPPORTED_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js', '.svelte', '.vue'];
 const SKIP_DIR_NAMES = new Set(['node_modules', 'dist', 'build', 'coverage', 'out']);
@@ -130,15 +68,13 @@ export const runComprehensiveBundleAudit = (targetPath?: string): BundleAuditRes
         const sizeKB = size / 1024;
         if (sizeKB <= BUNDLE_LIMIT_KB) continue;
 
-        const suggestions = [...checkLazyLoadingNecessity(file), ...checkHeavyImports(file)];
         const filePath = path.relative(projectRoot, file);
-        violations.push({ filePath, sizeKB: Number(sizeKB.toFixed(2)), limitKB: BUNDLE_LIMIT_KB, suggestions });
+        violations.push({ filePath, sizeKB: Number(sizeKB.toFixed(2)), limitKB: BUNDLE_LIMIT_KB, suggestions: [] });
 
         error(`❌ [Budget Violation]: ${filePath} is ${sizeKB.toFixed(2)}KB (limit ${BUNDLE_LIMIT_KB}KB).`);
-        suggestions.forEach(msg => warn(msg));
     }
 
-    const projectIssues = checkMinificationSettings(projectRoot);
+    const projectIssues: string[] = [];
     projectIssues.forEach(msg => warn(msg));
 
     if (violations.length === 0 && projectIssues.length === 0) {
