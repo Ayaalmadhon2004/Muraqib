@@ -8,7 +8,9 @@ export interface ProgressOptions {
   title?: string;
 }
 
-export interface AuditTimer {
+export type AuditTimer = StepTimer;
+
+export interface AuditTimerInterface {
   start(): void;
   end(): string;
   getDuration(): number;
