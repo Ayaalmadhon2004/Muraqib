@@ -18,8 +18,7 @@ export default [
     },
     rules: {
       "no-unused-vars": "off",
-      // `any` is used throughout the existing code; surfaced as a warning until it is typed.
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
   },
