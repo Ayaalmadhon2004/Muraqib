@@ -4,6 +4,13 @@
   "version": "1.0.0",
   "description": "Developer Environment Guardian & Performance Auditor — comprehensive audit suite for Node.js projects with 13+ modules",
   "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
@@ -25,6 +32,18 @@
     "url": "https://github.com/Ayaalmadhon2004/Muraqib/issues"
   },
   "homepage": "https://github.com/Ayaalmadhon2004/Muraqib#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "files": [
+    "src/**/*.js",
+    "src/**/*.d.ts",
+    "src/**/*.d.ts.map",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
   "devDependencies": {
     "@types/node": "^25.9.9",
     "@types/semver": "^7.7.1",
