@@ -256,15 +256,14 @@ export async function runEnvAudit(
       ...cachePerformanceSchema,
     };
 
-    const envOptions: import("../env.js").CreateEnvOptions = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      server: schema as any,
+    const envOptions = {
+      server: schema,
       runtimeEnv: process.env as Record<string, string | undefined>,
       isServer: true,
       silent: true,
       ...(options.presets ? { presets: options.presets as import("../presets.js").PresetInput[] } : {}),
       ...(options.schedule ? { schedule: options.schedule } : {}),
-    };
+    } as unknown as import("../env.js").CreateEnvOptions;
 
     if (options.safe) {
       const envResult = safeCreateEnv(envOptions);
@@ -275,8 +274,7 @@ export async function runEnvAudit(
         };
       }
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createEnvWithPresets(schema, envOptions as any);
+      createEnvWithPresets(schema, envOptions as unknown as Parameters<typeof createEnvWithPresets>[1]);
     }
 
     return { ok: true, errors: [] };
