@@ -11,6 +11,8 @@ An advanced auditing utility designed to analyze project source code dependencie
 import fs from "fs";
 import path from "path";
 import { scanProjectFiles } from "../utils/file-scanner.js";
+import { BaseGuard } from "./base-guard.js";
+import type { AuditContext } from "./types.js";
 
 export interface DependencyAuditResult { // muraqib-ignore-dead: auto-suppressed by script for DependencyAuditResult
   isClean: boolean;
@@ -19,6 +21,10 @@ export interface DependencyAuditResult { // muraqib-ignore-dead: auto-suppressed
   outdatedPackages: string[];
   duplicatePackages: string[];
   deprecatedImports: string[];
+}
+
+export interface DependencyAuditOptions {
+  targetPath: string;
 }
 
 const DEPRECATED_PATTERNS: Array<{ pattern: RegExp; suggestion: string }> = [
@@ -33,159 +39,203 @@ const DEPRECATED_PATTERNS: Array<{ pattern: RegExp; suggestion: string }> = [
   { pattern: /\brequire\s*\(/, suggestion: "Use dynamic import() instead (ESM)" },
 ];
 
-export function performDependencyAudit(targetPath: string): DependencyAuditResult {
-  const reports: string[] = [];
-  const circularDependencies: string[][] = [];
-  const outdatedPackages: string[] = [];
-  const duplicatePackages: string[] = [];
-  const deprecatedImports: string[] = [];
+/**
+ * Guard class - Dependency audit with BaseGuard architecture
+ */
+export class DependencyGuard extends BaseGuard {
+  protected guardName = "dependency-guard";
+  private options: DependencyAuditOptions;
 
-  const scannedFiles = scanProjectFiles(targetPath, ["ts", "js"]);
+  constructor(options: DependencyAuditOptions) {
+    super();
+    this.options = options;
+  }
 
-  const graph: Map<string, Set<string>> = new Map();
+  async execute(_context: AuditContext): Promise<void> {
+    const result = this.performAuditInternal();
 
-  for (const scannedFile of scannedFiles) {
-    const { relativePath, content, path: fullPath } = scannedFile as { relativePath: string; content: string; path: string };
-    const isGenerated = /(?:\.d\.ts|generated|dist|build|coverage|node_modules)/i.test(relativePath);
-    if (isGenerated) {
-      continue;
+    if (result.isClean) {
+      this.addSuccessMessage("No dependency issues detected");
+    } else {
+      result.reports.forEach((report) => {
+        if (report.includes("Circular dependency")) {
+          this.addError("Circular Dependency", report);
+        } else if (report.includes("Deprecated API")) {
+          this.addWarning("Deprecated API", report);
+        } else if (report.includes("outdated") || report.includes("v0.x")) {
+          this.addWarning("Outdated Package", report);
+        } else if (report.includes("Duplicate")) {
+          this.addWarning("Duplicate Versions", report);
+        } else {
+          this.addError("Dependency Issue", report);
+        }
+      });
     }
 
-    // Avoid scanning this file (auditor) to prevent self-matching deprecated patterns
-    if (/dependency-guard\.ts$/.test(relativePath) || relativePath.includes("core\\dependency-guard")) {
-      continue;
+    if (result.circularDependencies.length > 0) {
+      this.addMessage(`Found ${result.circularDependencies.length} circular dependency cycle(s)`);
     }
+  }
 
-    graph.set(relativePath, new Set());
+  public performAuditInternal(): DependencyAuditResult {
+    const reports: string[] = [];
+    const circularDependencies: string[][] = [];
+    const outdatedPackages: string[] = [];
+    const duplicatePackages: string[] = [];
+    const deprecatedImports: string[] = [];
 
-    const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
-    let match;
-    while ((match = importRegex.exec(content)) !== null) {
-      const importPath = match[1];
-      if (!importPath) continue;
+    const scannedFiles = scanProjectFiles(this.options.targetPath, ["ts", "js"]);
 
-      if (importPath.startsWith(".") || importPath.startsWith("/")) {
-        const resolved = path.resolve(path.dirname(fullPath), importPath);
-        const possiblePaths = [
-          resolved,
-          resolved + ".ts",
-          resolved + ".js",
-          path.join(resolved, "index.ts"),
-          path.join(resolved, "index.js"),
-        ];
+    const graph: Map<string, Set<string>> = new Map();
 
-        for (const p of possiblePaths) {
-          if (fs.existsSync(p)) {
-            const targetRelative = path.relative(targetPath, p);
-            graph.get(relativePath)!.add(targetRelative);
-            break;
+    for (const scannedFile of scannedFiles) {
+      const { relativePath, content, path: fullPath } = scannedFile as { relativePath: string; content: string; path: string };
+      const isGenerated = /(?:\.d\.ts|generated|dist|build|coverage|node_modules)/i.test(relativePath);
+      if (isGenerated) {
+        continue;
+      }
+
+      if (/dependency-guard\.ts$/.test(relativePath) || relativePath.includes("core\\dependency-guard")) {
+        continue;
+      }
+
+      graph.set(relativePath, new Set());
+
+      const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
+      let match;
+      while ((match = importRegex.exec(content)) !== null) {
+        const importPath = match[1];
+        if (!importPath) continue;
+
+        if (importPath.startsWith(".") || importPath.startsWith("/")) {
+          const resolved = path.resolve(path.dirname(fullPath), importPath);
+          const possiblePaths = [
+            resolved,
+            resolved + ".ts",
+            resolved + ".js",
+            path.join(resolved, "index.ts"),
+            path.join(resolved, "index.js"),
+          ];
+
+          for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+              const targetRelative = path.relative(this.options.targetPath, p);
+              graph.get(relativePath)!.add(targetRelative);
+              break;
+            }
           }
         }
       }
-    }
 
-    for (const dp of DEPRECATED_PATTERNS) {
-      if (dp.pattern.test(content)) {
-        const isAllowedPattern = /require\s*\(/.test(dp.pattern.source) && /(?:src\/index|scripts|config|tests)/i.test(relativePath);
-// muraqib-unreachable: flagged by automated triage. Review before removal.
-        if (isAllowedPattern) {
-          continue;
+      for (const dp of DEPRECATED_PATTERNS) {
+        if (dp.pattern.test(content)) {
+          const isAllowedPattern = /require\s*\(/.test(dp.pattern.source) && /(?:src\/index|scripts|config|tests)/i.test(relativePath);
+          if (isAllowedPattern) {
+            continue;
+          }
+          const suggestion = dp.suggestion;
+          const message = `Deprecated API usage in ${relativePath}: ${dp.pattern} -> ${suggestion}`;
+          deprecatedImports.push(message);
+          reports.push(message);
         }
-        const suggestion = dp.suggestion;
-        const message = `Deprecated API usage in ${relativePath}: ${dp.pattern} -> ${suggestion}`;
-        deprecatedImports.push(message);
-        reports.push(message);
-      }
-    }
-  }
-
-  // Detect circular dependencies using DFS
-  const visited = new Set<string>();
-  const recursionStack = new Set<string>();
-  const pathStack: string[] = [];
-
-  function dfs(node: string): void {
-    visited.add(node);
-    recursionStack.add(node);
-    pathStack.push(node);
-
-    const neighbors = graph.get(node) || new Set();
-    for (const neighbor of neighbors) {
-      if (!visited.has(neighbor)) {
-        dfs(neighbor);
-      } else if (recursionStack.has(neighbor)) {
-        const cycleStart = pathStack.indexOf(neighbor);
-        const cycle = pathStack.slice(cycleStart).concat([neighbor]);
-        circularDependencies.push(cycle);
-        reports.push(`Circular dependency detected: ${cycle.join(" → ")}`);
       }
     }
 
-    pathStack.pop();
-    recursionStack.delete(node);
-  }
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+    const pathStack: string[] = [];
 
-  for (const node of graph.keys()) {
-    if (!visited.has(node)) {
-      dfs(node);
-    }
-  }
+    const dfs = (node: string): void => {
+      visited.add(node);
+      recursionStack.add(node);
+      pathStack.push(node);
 
-  // Check package.json for duplicates and outdated
-  const packageJsonPath = path.join(targetPath, "package.json");
-  if (fs.existsSync(packageJsonPath)) {
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-    const allDeps: Record<string, string> = {
-      ...pkg.dependencies,
-      ...pkg.devDependencies,
+      const neighbors = graph.get(node) || new Set();
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor)) {
+          dfs(neighbor);
+        } else if (recursionStack.has(neighbor)) {
+          const cycleStart = pathStack.indexOf(neighbor);
+          const cycle = pathStack.slice(cycleStart).concat([neighbor]);
+          circularDependencies.push(cycle);
+          reports.push(`Circular dependency detected: ${cycle.join(" → ")}`);
+        }
+      }
+
+      pathStack.pop();
+      recursionStack.delete(node);
     };
 
-    const depNames = Object.keys(allDeps);
-    for (const dep of depNames) {
-      const version = allDeps[dep];
-      if (version && version.startsWith("^0.")) {
-        outdatedPackages.push(`${dep}@${version} — v0.x may have breaking changes`);
-        reports.push(`Potentially outdated: ${dep}@${version} (v0.x detected)`);
+    for (const node of graph.keys()) {
+      if (!visited.has(node)) {
+        dfs(node);
       }
     }
 
-    const lockPaths = [
-      path.join(targetPath, "package-lock.json"),
-      path.join(targetPath, "yarn.lock"),
-      path.join(targetPath, "pnpm-lock.yaml"),
-    ];
+    const packageJsonPath = path.join(this.options.targetPath, "package.json");
+    if (fs.existsSync(packageJsonPath)) {
+      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+      const allDeps: Record<string, string> = {
+        ...pkg.dependencies,
+        ...pkg.devDependencies,
+      };
 
-    for (const lockPath of lockPaths) {
-      if (fs.existsSync(lockPath)) {
-        const lockContent = fs.readFileSync(lockPath, "utf-8");
-        const packageCounts: Map<string, number> = new Map();
-
-        const nameRegex = /"([^"]+@\d+\.\d+\.\d+)"/g;
-        let lockMatch;
-        while ((lockMatch = nameRegex.exec(lockContent)) !== null) {
-          const fullName = lockMatch[1];
-          if (!fullName) continue;
-          const pkgName = fullName.split("@")[0];
-          if (!pkgName) continue;
-          packageCounts.set(pkgName, (packageCounts.get(pkgName) || 0) + 1);
+      const depNames = Object.keys(allDeps);
+      for (const dep of depNames) {
+        const version = allDeps[dep];
+        if (version && version.startsWith("^0.")) {
+          outdatedPackages.push(`${dep}@${version} — v0.x may have breaking changes`);
+          reports.push(`Potentially outdated: ${dep}@${version} (v0.x detected)`);
         }
+      }
 
-        for (const [pkgName, count] of packageCounts) {
-          if (count > 1) {
-            duplicatePackages.push(`${pkgName} (${count} versions in lock file)`);
-            reports.push(`Duplicate package versions: ${pkgName} appears ${count} times`);
+      const lockPaths = [
+        path.join(this.options.targetPath, "package-lock.json"),
+        path.join(this.options.targetPath, "yarn.lock"),
+        path.join(this.options.targetPath, "pnpm-lock.yaml"),
+      ];
+
+      for (const lockPath of lockPaths) {
+        if (fs.existsSync(lockPath)) {
+          const lockContent = fs.readFileSync(lockPath, "utf-8");
+          const packageCounts: Map<string, number> = new Map();
+
+          const nameRegex = /"([^"]+@\d+\.\d+\.\d+)"/g;
+          let lockMatch;
+          while ((lockMatch = nameRegex.exec(lockContent)) !== null) {
+            const fullName = lockMatch[1];
+            if (!fullName) continue;
+            const pkgName = fullName.split("@")[0];
+            if (!pkgName) continue;
+            packageCounts.set(pkgName, (packageCounts.get(pkgName) || 0) + 1);
+          }
+
+          for (const [pkgName, count] of packageCounts) {
+            if (count > 1) {
+              duplicatePackages.push(`${pkgName} (${count} versions in lock file)`);
+              reports.push(`Duplicate package versions: ${pkgName} appears ${count} times`);
+            }
           }
         }
       }
     }
-  }
 
-  return {
-    isClean: reports.length === 0,
-    reports,
-    circularDependencies,
-    outdatedPackages,
-    duplicatePackages,
-    deprecatedImports,
-  };
+    return {
+      isClean: reports.length === 0,
+      reports,
+      circularDependencies,
+      outdatedPackages,
+      duplicatePackages,
+      deprecatedImports,
+    };
+  }
+}
+
+/**
+ * دالة للتوافقية مع الكود القديم
+ * @deprecated استخدم DependencyGuard بدلاً من ذلك
+ */
+export function performDependencyAudit(targetPath: string): DependencyAuditResult {
+  const guard = new DependencyGuard({ targetPath });
+  return guard.performAuditInternal();
 }
